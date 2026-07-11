@@ -1,0 +1,62 @@
+name: Daily update & publish
+
+on:
+  schedule:
+    # 22:30 UTC Mon-Fri — after the US close (4pm ET = 20:00/21:00 UTC),
+    # hours after Asia (HK 08:00 UTC, Tokyo 06:00) and London (~16:30 UTC)
+    # closed, so every market's same-calendar-day close is final.
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  update-build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update data (append the latest closes)
+        run: python update_data.py
+        working-directory: scripts
+
+      - name: Build the dashboard
+        run: python monitor_build.py
+        working-directory: scripts
+
+      - name: Commit refreshed data + dashboard
+        run: |
+          git config user.name "bull-bear-bot"
+          git config user.email "laimanto@gmail.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Daily update $(date -u +%F)"
+          git push
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p _site
+          cp "dashboard/Bull_Bear_Monitor.html" _site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

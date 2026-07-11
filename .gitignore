@@ -1,0 +1,37 @@
+# Whitelist: ONLY the Bull-Bear Monitor pipeline is published.
+# Research scripts, experiment docs, private notes and scratch data stay local.
+/*
+!/.gitignore
+!/README.md
+!/requirements.txt
+!/.github
+
+!/scripts
+/scripts/*
+!/scripts/update_data.py
+!/scripts/monitor_build.py
+!/scripts/examine_cutoffs.py
+!/scripts/leading_pairs.py
+!/scripts/market_regime.py
+!/scripts/regime_dashboard_data.py
+!/scripts/tune_regime.py
+!/scripts/crash_windows.py
+!/scripts/smoke_test.js
+
+!/dashboard
+/dashboard/*
+!/dashboard/monitor_template.html
+!/dashboard/Bull_Bear_Monitor.html
+
+!/data
+/data/*
+!/data/QQQ.csv
+!/data/SPY.csv
+!/data/^HSI.csv
+!/data/^HSCE.csv
+!/data/^N225.csv
+!/data/^FTSE.csv
+
+!/results
+/results/*
+!/results/.gitkeep
