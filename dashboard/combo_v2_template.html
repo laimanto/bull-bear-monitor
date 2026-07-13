@@ -1,0 +1,984 @@
+<title>Bull-Bear Monitor v2 — All Markets — VB + MA + VM</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --border: #e2e5ea;
+    --text: #1a2233; --muted: #64708a;
+    --accent: #2563eb; --accent-soft: rgba(37, 99, 235, 0.10);
+    --gcline: #7c3aed; --grid: rgba(100, 112, 138, 0.16);
+    --up: #157f3d; --down: #c92a2a; --vol: #b45309; --vm: #0d9488;
+    --up-soft: rgba(21, 127, 61, 0.12); --down-soft: rgba(201, 42, 42, 0.12);
+    --out-soft: rgba(100, 112, 138, 0.14);
+    --tab-hover: #eceef2; --tooltip-bg: rgba(255, 255, 255, 0.97);
+    --flash: rgba(37, 99, 235, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --card: #1a1f29; --border: #2a3140;
+      --text: #e6eaf2; --muted: #8b96ab;
+      --accent: #5b93f5; --accent-soft: rgba(91, 147, 245, 0.14);
+      --gcline: #a78bfa; --grid: rgba(139, 150, 171, 0.14);
+      --up: #34c268; --down: #f26d6d; --vol: #f59e0b; --vm: #2dd4bf;
+      --up-soft: rgba(52, 194, 104, 0.14); --down-soft: rgba(242, 109, 109, 0.14);
+      --out-soft: rgba(139, 150, 171, 0.16);
+      --tab-hover: #232a37; --tooltip-bg: rgba(26, 31, 41, 0.97);
+      --flash: rgba(91, 147, 245, 0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c; --card: #1a1f29; --border: #2a3140;
+    --text: #e6eaf2; --muted: #8b96ab;
+    --accent: #5b93f5; --accent-soft: rgba(91, 147, 245, 0.14);
+    --gcline: #a78bfa; --grid: rgba(139, 150, 171, 0.14);
+    --up: #34c268; --down: #f26d6d; --vol: #f59e0b; --vm: #2dd4bf;
+    --up-soft: rgba(52, 194, 104, 0.14); --down-soft: rgba(242, 109, 109, 0.14);
+    --out-soft: rgba(139, 150, 171, 0.16);
+    --tab-hover: #232a37; --tooltip-bg: rgba(26, 31, 41, 0.97);
+    --flash: rgba(91, 147, 245, 0.25);
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --card: #ffffff; --border: #e2e5ea;
+    --text: #1a2233; --muted: #64708a;
+    --accent: #2563eb; --accent-soft: rgba(37, 99, 235, 0.10);
+    --gcline: #7c3aed; --grid: rgba(100, 112, 138, 0.16);
+    --up: #157f3d; --down: #c92a2a; --vol: #b45309; --vm: #0d9488;
+    --up-soft: rgba(21, 127, 61, 0.12); --down-soft: rgba(201, 42, 42, 0.12);
+    --out-soft: rgba(100, 112, 138, 0.14);
+    --tab-hover: #eceef2; --tooltip-bg: rgba(255, 255, 255, 0.97);
+    --flash: rgba(37, 99, 235, 0.18);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+    padding: 20px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .stamp { color: var(--muted); font-size: 11px; text-align: right; line-height: 1.55; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  h1 { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+  h1 .ver { color: var(--muted); font-weight: 600; font-size: 13px; margin-left: 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 4px 0 18px; }
+  .sub b { color: var(--text); font-weight: 600; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .tab {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    font: 600 13px/1 inherit; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .tab:hover { background: var(--tab-hover); color: var(--text); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab .pip { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .pip.in { background: var(--up); } .pip.outp { background: var(--down); }
+  .tab.active .pip.in { background: #b3f0c8; } .tab.active .pip.outp { background: #ffc2c2; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .lbl { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tile .val { font-size: 21px; font-weight: 650; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .tile .note { color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.45; }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; font-weight: 650; margin-bottom: 10px; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 13px; color: var(--muted); font-size: 12px; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .tri { width: 0; height: 0; display: inline-block; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid var(--muted); }
+  .dia { width: 8px; height: 8px; background: var(--gcline); display: inline-block; transform: rotate(45deg); }
+  .cw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .bandsw { width: 14px; height: 10px; display: inline-block; border-radius: 2px; }
+  .rangebtns { display: flex; gap: 4px; }
+  .rangebtns button {
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer; font: 600 12px/1 inherit; font-family: inherit;
+  }
+  .rangebtns button:hover { background: var(--tab-hover); color: var(--text); }
+  .rangebtns button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chart-box { position: relative; }
+  canvas { display: block; width: 100%; height: 740px; cursor: crosshair; touch-action: pan-y; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; z-index: 5;
+    background: var(--tooltip-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; line-height: 1.55; min-width: 175px; max-width: 340px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); font-variant-numeric: tabular-nums;
+  }
+  .tooltip .tdate { font-weight: 650; margin-bottom: 2px; }
+  .tooltip .trow { display: flex; justify-content: space-between; gap: 14px; color: var(--muted); }
+  .tooltip .trow b { color: var(--text); font-weight: 600; }
+  .tooltip .sig { font-weight: 650; margin-top: 3px; }
+  .tblwrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 7px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  th:first-child, td:first-child, th.l, td.l { text-align: left; }
+  table.dense { font-size: 12px; }
+  table.dense th, table.dense td { padding: 5px 7px; }
+  table.dense th { font-size: 10px; letter-spacing: 0.03em; }
+  table.fit { font-size: 11px; table-layout: fixed; width: 100%; }
+  table.fit th, table.fit td { padding: 4px 5px; white-space: normal; overflow-wrap: break-word; vertical-align: top; }
+  table.fit th { font-size: 10px; letter-spacing: 0.02em; }
+  table.fit .chip { padding: 1px 6px; font-size: 10px; }
+  table.rules td { white-space: normal; vertical-align: top; }
+  table.rules td.l:first-child { font-weight: 650; }
+  table.eragrp th.grp { text-align: center; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  td .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 650; }
+  .chip.open { background: var(--accent-soft); color: var(--accent); }
+  .chip.win { background: var(--up-soft); color: var(--up); }
+  .chip.loss { background: var(--down-soft); color: var(--down); }
+  .chip.gcx { background: var(--accent-soft); color: var(--gcline); }
+  .chip.cbx { background: var(--down-soft); color: var(--down); }
+  .chip.inchip { background: var(--up-soft); color: var(--up); }
+  .chip.outchip { background: var(--down-soft); color: var(--down); }
+  .rdg { color: var(--muted); font-size: 10.5px; margin-top: 2px; line-height: 1.4; }
+  .caveat { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  tfoot td { color: var(--muted); font-size: 12px; white-space: normal; }
+  tr.eprow { cursor: pointer; }
+  tr.eprow:hover td { background: var(--tab-hover); }
+  tr.flash td { animation: flashbg 1.6s ease-out; }
+  @keyframes flashbg { 0%, 40% { background: var(--flash); } 100% { background: transparent; } }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Bull-Bear Monitor<span class="ver">v2 · VB + MA + VM · All Markets</span></h1>
+    <div class="stamp">__BUILD_TS__</div>
+  </div>
+  <div class="sub">
+    Candidate strategy (docs/EXPERIMENT_LOG.md rounds 32-66), applied to all 6 monitor
+    markets — three independent signals: <b>VB</b> (Volatility Breaker — fast crashes),
+    <b>MA</b> (50/200-day Moving Average cross — slow bears), <b>VM</b> (Volume Momentum — a
+    volume-confirmed recovery override, developed and validated on QQQ, transferred unmodified
+    everywhere). VB's own level is calibrated per volatility cluster, not one global number
+    (round 66) — see the strategy card on each tab for the exact figure used. All-in or
+    all-out at daily closes. Performance below is split at 2009-01-01, the project's standard
+    validation boundary (the market's post-Fed-intervention crisis response shifted
+    structurally around then). Green pip = IN the market, red pip = OUT. Cash earns nothing
+    while out; no trading costs or taxes modeled.
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="panels"></div>
+</div>
+
+<script>
+const DATA = __DATA_JSON__;
+const KEYS = Object.keys(DATA);
+for (const k of KEYS) {
+  const r = DATA[k];
+  if (r.base) for (const f of ["dates", "close", "smaF", "smaS", "vol"]) r[f] = DATA[r.base][f];
+}
+
+const fmt = (v, d = 2) => v == null ? "–" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = v => (v > 0 ? "+" : "") + fmt(v, Math.abs(v) >= 100 ? 0 : 1) + "%";
+const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const mult = v => "×" + (v >= 10 ? fmt(v, 1) : fmt(v, 2));
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function dShort(iso) { const [y, m, d] = iso.split("-"); return MON[+m - 1] + " " + (+d) + ", " + y; }
+function dTiny(iso) { const [y, m, d] = iso.split("-"); return MON[+m - 1] + " " + (+d) + " '" + y.slice(2); }
+function days(a, b) { return Math.round((new Date(b) - new Date(a)) / 864e5); }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const fmtP = (r, v) => v == null ? "–" : r.cur + fmt(v, v >= 1000 ? 0 : 2);
+
+function posture(r) {
+  const L = r.dates.length - 1;
+  const out = !!r.out[L];
+  const openEp = r.episodes.find(e => e.open);
+  const lastIn = [...r.episodes].reverse().find(e => e.reenter_date);
+  const since = out ? (openEp ? openEp.exit_date : r.first_date)
+                    : (lastIn ? lastIn.reenter_date : r.first_date);
+  return { out, since, nDays: days(since, r.last_date), openEp, lastIn };
+}
+
+const tabsEl = document.getElementById("tabs");
+const panelsEl = document.getElementById("panels");
+const charts = {};
+
+function addTab(id, label, pip) {
+  const b = document.createElement("button");
+  b.className = "tab"; b.dataset.target = id;
+  b.innerHTML = (pip == null ? "" : `<span class="pip ${pip ? "outp" : "in"}"></span>`) + label;
+  b.onclick = () => activate(id);
+  tabsEl.appendChild(b);
+}
+function activate(id) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.target === id));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + id));
+  if (charts[id]) charts[id].resizeDraw();
+}
+
+// ---------- overview ----------
+addTab("OVERVIEW", "Overview", null);
+(function () {
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-OVERVIEW";
+
+  let rows = "";
+  for (const k of KEYS) {
+    const r = DATA[k], s = r.summary, po = posture(r);
+    const chip = po.out
+      ? `<span class="chip outchip">OUT</span>`
+      : `<span class="chip inchip">IN</span>`;
+    const name = `${r.tab} <span style="color:var(--muted); font-weight:400">· ${r.full_name}</span>`;
+    rows += `<tr>
+      <td class="l" style="font-weight:650">${name}</td>
+      <td class="l">${chip}<div class="rdg">since ${dShort(po.since)} (${po.nDays}d)</div></td>
+      <td>${fmtP(r, r.close[r.close.length - 1])}<div class="rdg">${dTiny(r.last_date)}</div></td>
+      <td class="l">${dTiny(r.first_date)}</td>
+      <td class="${cls(s.roi_bh)}">${pct(s.roi_bh)}</td>
+      <td class="${cls(s.roi_ma)}">${pct(s.roi_ma)}</td>
+      <td class="${cls(s.roi_strat)}" style="font-weight:650">${pct(s.roi_strat)}</td>
+      <td class="${s.edge_vs_bh >= 1 ? "pos" : "neg"}">${mult(s.edge_vs_bh)}</td>
+      <td class="neg">${fmt(s.mdd_bh, 0)}%</td>
+      <td class="neg" style="font-weight:650">${fmt(s.mdd_strat, 0)}%</td>
+      <td>${s.exits}</td>
+    </tr>`;
+  }
+  p.innerHTML = `
+    <div class="card"><h2>All markets — today's signal and what each approach earned</h2><div class="tblwrap">
+      <table class="dense"><thead><tr>
+        <th class="l">Market</th><th class="l">Signal now</th><th>Last close</th><th class="l">Data since</th>
+        <th>Buy &amp; hold ROI</th><th>MA only ROI</th><th>Strategy ROI</th><th>Strategy vs buy &amp; hold</th>
+        <th>Buy &amp; hold max drawdown</th><th>Strategy max drawdown</th><th>Exits</th>
+      </tr></thead><tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="11" class="l">
+        "Strategy" = <b>Combo Strategy</b> — VB (Volatility Breaker) + MA (50/200 moving-average cross) + VM
+        (Volume Momentum recovery override), candidate strategy pending adoption. VB's trigger/calm levels are
+        calibrated per volatility cluster (round 66), not identical across markets — see each tab's strategy card.
+        Strategy vs buy &amp; hold = final strategy wealth ÷ final buy-and-hold wealth. Expect the strategy to trail
+        buy &amp; hold in long bull decades and to earn its edge in extended bears — its constant is the drawdown cut.
+      </td></tr></tfoot></table>
+    </div></div>`;
+  panelsEl.appendChild(p);
+})();
+
+// ---------- per-market tabs ----------
+// named rules, used consistently in the strategy card, trigger-log chips,
+// and marker tooltips so the same short name always means the same rule
+const RULE = {
+  sell1: "Sell Rule 1 — MA Death Cross",
+  sell2: "Sell Rule 2 — VB High",
+  buy1: "Buy Rule 1 — VB+MA Calm",
+  buy2: "Buy Rule 2 — VM Combo",
+};
+const OUT_CHIP = {
+  gc: `<span class="chip gcx">${RULE.sell1}</span>`,
+  cb: `<span class="chip cbx">${RULE.sell2}</span>`,
+  both: `<span class="chip cbx">${RULE.sell2}</span> <span class="chip gcx">${RULE.sell1}</span>`,
+};
+const IN_CHIP = {
+  clear: `<span class="chip win">${RULE.buy1}</span>`,
+  momo: `<span class="chip open">${RULE.buy2}</span>`,
+};
+const OUT_NAME = { gc: RULE.sell1, cb: RULE.sell2, both: `${RULE.sell1} + ${RULE.sell2}` };
+const IN_NAME = { clear: RULE.buy1, momo: RULE.buy2 };
+
+for (const k of KEYS) {
+  const r = DATA[k], s = r.summary, th = r.thresholds, po = posture(r);
+  addTab(k, r.tab, po.out);
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + k;
+
+  // 1. signal tiles: current price, position, VB, MA, VM
+  const L = r.dates.length - 1;
+  const vNow = r.vol[L], fNow = r.smaF[L], sNow = r.smaS[L], vmNow = r.now.vm_value;
+  const trendUp = fNow != null && sNow != null && fNow >= sNow;
+  const volState = vNow >= th.vol_trig ? ["neg", "at/above the 45% sell trigger"]
+    : vNow <= th.vol_calm ? ["pos", "below the 18% calm level"]
+    : ["", "between calm 18% and trigger 45%"];
+  const vmState = vmNow == null ? ["", ""] : vmNow >= th.vm_share ? ["pos", "at/above the 60% override level"]
+    : ["", "below the 60% override level"];
+  let posNote;
+  if (!po.out) {
+    posNote = "in since " + dShort(po.since) + " · " + po.nDays + " days";
+  } else {
+    const waits = [];
+    if (r.now.vb) waits.push("vol ≤ 18%");
+    if (r.now.ma_below) waits.push("golden cross");
+    posNote = "out since " + dShort(po.since) + " · " + po.nDays + " days · back in on " +
+      (waits.length ? waits.join(" AND ") : "all clear") + " (or VM)";
+  }
+  const tiles = `
+    <div class="tiles">
+      <div class="tile"><div class="lbl">Last close</div><div class="val">${fmtP(r, r.close[L])}</div>
+        <div class="note">${dShort(r.last_date)}</div></div>
+      <div class="tile"><div class="lbl">Position</div><div class="val ${po.out ? "neg" : "pos"}">${po.out ? "OUT" : "IN"}</div>
+        <div class="note">${posNote}</div></div>
+      <div class="tile"><div class="lbl">VB — 10-day volatility</div><div class="val ${volState[0]}">${fmt(vNow, 1)}%</div>
+        <div class="note">${volState[1]}<br>sell ≥ ${th.vol_trig}% · back in ≤ ${th.vol_calm}%</div></div>
+      <div class="tile"><div class="lbl">MA ${th.ma_fast}/${th.ma_slow}</div>
+        <div class="val ${trendUp ? "pos" : "neg"}">${trendUp ? "ABOVE" : "BELOW"}</div>
+        <div class="note">${th.ma_fast}d ${fmtP(r, fNow)} vs ${th.ma_slow}d ${fmtP(r, sNow)}</div></div>
+      <div class="tile"><div class="lbl">VM — up-volume share (${th.vm_win}d)</div>
+        <div class="val ${vmState[0]}">${vmNow == null ? "–" : fmt(vmNow, 0) + "%"}</div>
+        <div class="note">${vmState[1]}<br>override needs ≥ ${th.vm_share}% · vol ≤ ${th.vm_vol_gate}% · price ≥ ${th.vm_guard}% vs MA-200</div></div>
+    </div>`;
+
+  // 2. performance card — strategies as ROWS, Pre/Post-2009 as grouped COLUMNS
+  const e = s.eras;
+  function stratRow(label, pre, post, bold) {
+    return `<tr${bold ? ' style="font-weight:650"' : ""}><td class="l">${label}</td>
+      <td class="${cls(pre.roi)}">${pct(pre.roi)}</td><td class="neg">${fmt(pre.dd, 1)}%</td><td>${mult(pre.cap)}</td>
+      <td class="${cls(post.roi)}">${pct(post.roi)}</td><td class="neg">${fmt(post.dd, 1)}%</td><td>${mult(post.cap)}</td></tr>`;
+  }
+  const perfRows =
+    stratRow("Buy &amp; hold", e.pre2009.bh, e.post2009.bh, false) +
+    stratRow("MA only", e.pre2009.ma, e.post2009.ma, false) +
+    stratRow("Combo Strategy", e.pre2009.combo2, e.post2009.combo2, true);
+  const perfCard = `<div class="card"><h2>Performance — Buy &amp; hold vs MA only vs Combo Strategy, split at 2009-01-01</h2><div class="tblwrap">
+    <table class="dense eragrp"><thead>
+      <tr><th class="l" rowspan="2"></th>
+        <th class="grp" colspan="3">Pre-2009 (dot-com + GFC)</th><th class="grp" colspan="3">Post-2009 (current regime)</th></tr>
+      <tr><th>ROI</th><th>Max DD</th><th>Capture</th><th>ROI</th><th>Max DD</th><th>Capture</th></tr>
+    </thead><tbody>${perfRows}</tbody>
+    <tfoot><tr><td colspan="7" class="l">
+      Capture = strategy wealth growth ÷ buy-and-hold wealth growth over that era (1.00 = matched the market). Every
+      row forces day-1-of-window positioning to be IN for every approach, so entry-price luck at the 2009 boundary
+      (a post-crash low) doesn't favor buy-and-hold — see docs/EXPERIMENT_LOG.md round 51. Full-sample:
+      ${pct(s.roi_strat)} Combo Strategy vs ${pct(s.roi_bh)} buy &amp; hold, edge ${mult(s.edge_vs_bh)},
+      maxDD ${fmt(s.mdd_strat, 1)}% vs ${fmt(s.mdd_bh, 1)}%.
+    </td></tr></tfoot></table>
+  </div></div>`;
+
+  // 3. trigger log (built before the chart so markers can link to rows)
+  let rows = "";
+  r.episodes.forEach((ep, i) => {
+    const win = ep.market_chg_pct < 0;
+    const chip = ep.open ? '<span class="chip open">STILL OUT</span>'
+      : win ? '<span class="chip win">AVOIDED</span>' : '<span class="chip loss">WHIPSAW</span>';
+    rows += `<tr class="eprow" id="eprow-${k}-${i}" data-ep="${i}">
+      <td>${i + 1}</td>
+      <td class="l">${dTiny(ep.exit_date)}</td>
+      <td class="l">${OUT_CHIP[ep.cause]}<div class="rdg">${ep.out_reading}</div></td>
+      <td class="l">${ep.reenter_date ? dTiny(ep.reenter_date) : "–"}</td>
+      <td class="l">${ep.in_cause ? IN_CHIP[ep.in_cause] + '<div class="rdg">' + ep.in_reading + "</div>" : "–"}</td>
+      <td>${ep.days_out}</td>
+      <td class="${win ? "pos" : "neg"}">${pct(ep.market_chg_pct)}</td>
+      <td class="${ep.wealth_effect >= 1 ? "pos" : "neg"}">${mult(ep.wealth_effect)}</td>
+      <td class="${ep.cum >= 1 ? "pos" : "neg"}">${mult(ep.cum)}</td>
+      <td class="l">${ep.during || "–"}</td>
+      <td class="l">${chip}</td>
+    </tr>`;
+  });
+  if (!rows) rows = '<tr><td colspan="11" class="l">No exits yet.</td></tr>';
+  const epTable = `<div class="card"><h2>Trigger log — every sell &amp; buy-back with its trigger readings</h2>
+    <table class="fit"><colgroup>
+      <col style="width:3%"><col style="width:7%"><col style="width:20%"><col style="width:7%"><col style="width:20%">
+      <col style="width:4.5%"><col style="width:7%"><col style="width:6%"><col style="width:6.5%"><col style="width:12%"><col style="width:7%">
+    </colgroup><thead><tr>
+      <th>#</th><th class="l">Out (sell)</th><th class="l">Out trigger &amp; reading</th>
+      <th class="l">In (buy back)</th><th class="l">In trigger &amp; reading</th>
+      <th>Days out</th><th>Market move while out</th><th>Wealth effect</th><th>Cumulative</th><th class="l">During</th><th class="l">Result</th>
+    </tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td colspan="11" class="l">
+      Triggers — same rule names used in the Strategy card below: <b>${RULE.sell1}</b> (50-day average closes
+      below 200-day) · <b>${RULE.sell2}</b> (10-day vol ≥ 45%) · <b>${RULE.buy1}</b> (10-day vol ≤ 18% AND the
+      50-day average is back above the 200-day) · <b>${RULE.buy2}</b> (up-volume share ≥ 60% of 12 sessions
+      AND vol ≤ 20% AND close within 15% of the 200-day average — overrides even while a sell rule is active).
+      # matches the numbered markers on the chart — click a marker to jump here, click a row to zoom the chart to that episode.
+      Market move while out &lt; 0 = the pair sidestepped a fall (<b style="color:var(--up)">AVOIDED</b>);
+      &gt; 0 = the market kept rising and the pair bought back higher (<b style="color:var(--down)">WHIPSAW</b>).
+      Wealth effect = what the pair multiplied final wealth by vs buy &amp; hold (1 ÷ (1 + move)); the Cumulative column is the
+      running product — its last value <b>is</b> the strategy's final wealth vs buy &amp; hold (${mult(s.edge_vs_bh)}).
+    </td></tr></tfoot></table>
+  </div>`;
+
+  // 4. financial-crisis card
+  let crows = "";
+  for (const c of r.crises) {
+    crows += `<tr>
+      <td class="l" style="font-weight:650">${c.name}</td>
+      <td class="l">${dShort(c.start)}</td><td class="l">${dShort(c.end)}</td>
+      <td class="neg">${pct(c.bh)}</td>
+      <td class="${cls(c.gc)}">${pct(c.gc)}</td>
+      <td class="${cls(c.combo)}" style="font-weight:650">${pct(c.combo)}</td>
+    </tr>`;
+  }
+  if (!crows) crows = '<tr><td colspan="6" class="l">No 20%+ bear market in this data period.</td></tr>';
+  const crisisCard = `<div class="card"><h2>Financial crises in this market — what each approach lost, peak to trough</h2><div class="tblwrap">
+    <table class="dense"><thead><tr>
+      <th class="l">Crisis</th><th class="l">Peak (close)</th><th class="l">Trough (close)</th>
+      <th>Buy &amp; hold</th><th>MA only</th><th>Combo Strategy</th>
+    </tr></thead><tbody>${crows}</tbody>
+    <tfoot><tr><td colspan="6" class="l">Auto-detected on this market's own closes: every decline of 20%+ from a peak,
+      measured over the crisis's <b>overall</b> peak and trough — rebounds of a few months inside a crisis do not split
+      the window. These windows are the red shading on the chart.</td></tr></tfoot></table>
+  </div></div>`;
+
+  // 5. chart card
+  const chartCard = `
+    <div class="card">
+      <div class="chart-head">
+        <div class="legend">
+          <span><span class="cw" style="background:var(--up)"></span>Up day (candle)</span>
+          <span><span class="cw" style="background:var(--down)"></span>Down day (candle)</span>
+          <span><span class="sw" style="background:var(--gcline)"></span>${th.ma_fast}-day avg</span>
+          <span><span class="sw" style="background:var(--muted); opacity:.7"></span>${th.ma_slow}-day avg</span>
+          <span><span class="tri"></span>Sell</span>
+          <span><span class="dot"></span>Buy back</span>
+          <span><span class="dia"></span>Golden / death cross</span>
+          <span><span class="sw" style="background:var(--vol)"></span>VB — 10-day volatility</span>
+          <span><span class="sw" style="background:var(--vm)"></span>VM — up-volume share</span>
+          <span>Volume bars colored green/red to match each day's candle</span>
+          <span><span class="bandsw" style="background:var(--out-soft)"></span>Out of market</span>
+          <span><span class="bandsw" style="background:var(--down-soft)"></span>Crisis window</span>
+        </div>
+        <div class="rangebtns" id="rb-${k}">
+          <button data-r="all" class="on">All</button><button data-r="10y">10Y</button><button data-r="5y">5Y</button><button data-r="1y">1Y</button>
+        </div>
+      </div>
+      <div class="chart-box">
+        <canvas id="cv-${k}"></canvas>
+        <div class="tooltip" id="tt-${k}"></div>
+      </div>
+      <div class="hint">Daily candlesticks (green = close &ge; open, red = close &lt; open) with the ${th.ma_fast}/${th.ma_slow}-day
+        averages · ◆ on the purple line = golden/death cross ·
+        ▲ sell, ● buy back (ringed ● = VM override) — numbers match the trigger log below; click a marker to jump to its row ·
+        panes below: Volume (colored to match each day's candle) · VB — 10-day volatility (45% sell / 18% calm) ·
+        VM — up-volume share (${th.vm_win}d) with a ${th.vm_share}% reference line (the override level) ·
+        hover for readings · scroll to zoom · drag to pan · double-click to reset</div>
+    </div>`;
+
+  // 6. strategy rules card — indicators glossary, then the ACTUAL two
+  // sell rules and two buy rules (each rule already spells out every
+  // indicator it needs — no rule requires the reader to mentally AND
+  // separate rows together), placed ABOVE the trigger log
+  const vbRule = r.rules.find(ru => ru.name.startsWith("VB"));
+  const maRule = r.rules.find(ru => ru.name.startsWith("MA"));
+  const vmRule = r.rules.find(ru => ru.name.startsWith("VM"));
+
+  let glossRows = "";
+  for (const ru of r.rules)
+    glossRows += `<tr><td class="l" style="font-weight:650; white-space:nowrap">${ru.name}</td><td class="l">${ru.desc}</td></tr>`;
+
+  // Sell Rule 1/2: MA and VB are each independently sufficient (OR) --
+  // Buy Rule 1: VB and MA must BOTH clear together, so it is written as
+  // one explicit, thresholded condition, not two rows to be ANDed by eye.
+  // Buy Rule 2: VM's override already involves VB (vol gate) and MA-200
+  // (the trend guard) in addition to VM itself -- labeled accordingly.
+  const sellRows = [
+    [RULE.sell1, "MA", maRule.sell],
+    [RULE.sell2, "VB", vbRule.sell],
+  ].map(([lbl, sig, cond]) =>
+    `<tr><td class="l" style="font-weight:650">${lbl}</td><td class="l">${sig}</td><td class="l">${cond}</td></tr>`).join("");
+
+  const buyRule1 = `10-day volatility (VB) settles back below ${th.vol_calm}% annualized `
+    + `AND the ${th.ma_fast}-day average closes back above the ${th.ma_slow}-day average (MA golden cross)`;
+  const buyRows = [
+    [RULE.buy1, "VB + MA", buyRule1],
+    [RULE.buy2, "VM + VB + MA-200", vmRule.buy],
+  ].map(([lbl, sig, cond]) =>
+    `<tr><td class="l" style="font-weight:650">${lbl}</td><td class="l">${sig}</td><td class="l">${cond}</td></tr>`).join("");
+
+  const sectionLbl = `font-size:11px; color:var(--muted); margin-bottom:8px; font-weight:650; text-transform:uppercase; letter-spacing:0.05em;`;
+  const strategyCard = `<div class="card"><h2>Strategy — ${r.strategy_label}</h2>
+    <div style="${sectionLbl}">Indicators</div>
+    <div class="tblwrap" style="margin-bottom:16px"><table class="rules dense"><tbody>${glossRows}</tbody></table></div>
+    <div style="${sectionLbl}">Sell rules — either rule alone triggers a sell</div>
+    <div class="tblwrap" style="margin-bottom:16px"><table class="rules dense"><thead><tr>
+      <th class="l">Rule</th><th class="l">Signal(s)</th><th class="l">Condition</th>
+    </tr></thead><tbody>${sellRows}</tbody></table></div>
+    <div style="${sectionLbl}">Buy rules — either rule alone triggers a buy-back</div>
+    <div class="tblwrap"><table class="rules dense"><thead><tr>
+      <th class="l">Rule</th><th class="l">Signal(s)</th><th class="l">Condition</th>
+    </tr></thead><tbody>${buyRows}</tbody>
+    <tfoot><tr><td colspan="3" class="l">
+      <b>SELL</b> at the close where <b>${RULE.sell1}</b> OR <b>${RULE.sell2}</b> fires. <b>BUY BACK</b> at the
+      first close where <b>${RULE.buy1}</b> OR <b>${RULE.buy2}</b> fires — ${RULE.buy2} can fire on its own even
+      while VB and/or MA are still signaling sell, which is what lets it outrank a still-active VB or a still-
+      bearish MA. The conditions listed within a single rule (separated by "AND") must all hold together for
+      that rule to fire. "10-day volatility" = standard deviation of the last 10 daily moves, annualized —
+      both directions count.
+    </td></tr></tfoot></table></div>
+  </div>`;
+
+  p.innerHTML = `
+    <div class="caveat"><b style="color:var(--text)">${r.full_name}</b> (${r.symbol}) · data from ${dShort(r.first_date)} to ${dShort(r.last_date)}${po.out ? ` · <b style="color:var(--down)">currently OUT since ${dShort(po.since)}</b>` : ""}</div>
+    ${tiles}
+    ${perfCard}
+    ${chartCard}
+    ${strategyCard}
+    ${epTable}
+    ${crisisCard}`;
+  panelsEl.appendChild(p);
+  charts[k] = makeChart(k, r);
+}
+
+// ---------- chart ----------
+function makeChart(t, r) {
+  const cv = document.getElementById("cv-" + t);
+  const tt = document.getElementById("tt-" + t);
+  const ctx = cv.getContext("2d");
+  const n = r.dates.length;
+  const th = r.thresholds;
+  const idxByDate = {};
+  r.dates.forEach((d, i) => idxByDate[d] = i);
+
+  const markByIdx = {};
+  const markerPts = [];
+  const addMark = (i, mk) => { if (i != null) (markByIdx[i] = markByIdx[i] || []).push(mk); };
+  r.episodes.forEach((e, num) => {
+    const win = e.market_chg_pct < 0;
+    addMark(e.exit_i, { kind: "exit", win, open: e.open, e, num });
+    if (e.reenter_i != null) addMark(e.reenter_i, { kind: "entry", win, open: false, e, num });
+  });
+  const crossByIdx = {};
+  for (const c of r.crosses) crossByIdx[c.i] = c.dir;
+
+  const outRuns = [];
+  for (let i = 0; i < n; i++) {
+    if (r.out[i] && (i === 0 || !r.out[i - 1])) {
+      let j = i;
+      while (j < n - 1 && r.out[j + 1]) j++;
+      outRuns.push([i, j]);
+    }
+  }
+  const crises = r.crises;
+
+  const st = { i0: 0, i1: n - 1, hover: -1, w: 0, h: 0 };
+  const PAD = { l: 62, r: 14, t: 12, b: 26 };
+  const SUBH = 85, GAPY = 13;  // height of each of the 3 lower panes (Volume, VB, VM)
+  const MA_SERIES = [
+    { key: "smaS", varName: "--muted", w: 1.4, alpha: 0.75 },
+    { key: "smaF", varName: "--gcline", w: 1.4, alpha: 1 },
+  ];
+
+  function xAt(i) { return PAD.l + (i - st.i0) / Math.max(st.i1 - st.i0, 1) * (st.w - PAD.l - PAD.r); }
+  function iAt(x) { return Math.round(st.i0 + (x - PAD.l) / (st.w - PAD.l - PAD.r) * (st.i1 - st.i0)); }
+  const volFmt = v => v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(0) + "K" : String(v);
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    st.w = cv.clientWidth; st.h = cv.clientHeight;
+    if (cv.width !== st.w * dpr || cv.height !== st.h * dpr) { cv.width = st.w * dpr; cv.height = st.h * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, st.w, st.h);
+
+    const C = {
+      grid: cssVar("--grid"), text: cssVar("--muted"), up: cssVar("--up"), down: cssVar("--down"),
+      downSoft: cssVar("--down-soft"), outSoft: cssVar("--out-soft"), accent: cssVar("--accent"),
+      vol: cssVar("--vol"), gcline: cssVar("--gcline"), card: cssVar("--card"), vm: cssVar("--vm"),
+    };
+
+    // 4 stacked panes, bottom-up: VM, VB (volatility), Volume, price (candles)
+    const vmB = st.h - PAD.b, vmT = vmB - SUBH;
+    const vbB = vmT - GAPY, vbT = vbB - SUBH;
+    const volB = vbT - GAPY, volH = SUBH, volT = volB - volH;
+    const mainB = volT - GAPY;
+    const panelB = vmB;  // true bottom of the whole chart (shading/crosshair span)
+
+    // price scale from the candles' own high/low, not just the MA lines,
+    // so wicks are never clipped
+    let lo = Infinity, hi = -Infinity;
+    for (let i = st.i0; i <= st.i1; i++) {
+      const h = r.high[i], l = r.low[i];
+      if (h != null && h > hi) hi = h;
+      if (l != null && l < lo) lo = l;
+    }
+    for (const sr of MA_SERIES) {
+      const arr = r[sr.key];
+      for (let i = st.i0; i <= st.i1; i++) {
+        const v = arr[i];
+        if (v == null) continue;
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      }
+    }
+    const padY = (hi - lo) * 0.05 || 0.1;
+    const aY = lo - padY, bY = hi + padY;
+    const yAt = v => PAD.t + (1 - (v - aY) / (bY - aY)) * (mainB - PAD.t);
+
+    let vmax = th.vol_trig * 1.2;
+    for (let i = st.i0; i <= st.i1; i++) {
+      const v = r.vol[i];
+      if (v != null && v > vmax) vmax = v;
+    }
+    vmax *= 1.06;
+    const vAt = v => vbT + (1 - v / vmax) * SUBH;
+
+    let volumeMax = 1;
+    for (let i = st.i0; i <= st.i1; i++) {
+      const v = r.volume[i];
+      if (v != null && v > volumeMax) volumeMax = v;
+    }
+    volumeMax *= 1.08;
+    const volAt = v => volT + (1 - v / volumeMax) * volH;
+
+    ctx.font = "11px 'Segoe UI', system-ui, sans-serif";
+    ctx.fillStyle = C.text; ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    const step = niceStep((hi - lo) / 5);
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      const y = Math.round(yAt(v)) + 0.5;
+      if (y > mainB) continue;
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(st.w - PAD.r, y); ctx.stroke();
+      ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(r.cur + (+v.toFixed(2)).toLocaleString("en-US"), PAD.l - 7, y);
+    }
+
+    const span = st.i1 - st.i0;
+    const tickN = Math.min(8, Math.max(3, Math.floor(st.w / 120)));
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (let q = 0; q <= tickN; q++) {
+      const i = Math.round(st.i0 + span * q / tickN);
+      const [y, m, d] = r.dates[i].split("-");
+      const lbl = span > 500 ? y : span > 250 ? MON[+m - 1] + " '" + y.slice(2) : MON[+m - 1] + " " + (+d);
+      ctx.fillText(lbl, xAt(i), st.h - PAD.b + 8);
+    }
+
+    for (const [a0, b0] of outRuns) {
+      const a = Math.max(a0, st.i0), b = Math.min(b0, st.i1);
+      if (b <= a) continue;
+      ctx.fillStyle = C.outSoft;
+      ctx.fillRect(xAt(a), PAD.t, xAt(b) - xAt(a), panelB - PAD.t);
+    }
+
+    const crSpans = [];
+    for (const c of crises) {
+      let a = idxByDate[c.start], b = idxByDate[c.end];
+      if (a == null || b == null || b <= a) continue;
+      crSpans.push({ name: c.name, a, b });
+    }
+    for (const cs of crSpans) {
+      const a = Math.max(cs.a, st.i0), b = Math.min(cs.b, st.i1);
+      if (b <= a) continue;
+      const x1 = xAt(a), x2 = xAt(b);
+      ctx.fillStyle = C.downSoft;
+      ctx.fillRect(x1, PAD.t, x2 - x1, panelB - PAD.t);
+      ctx.strokeStyle = C.down; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.globalAlpha = 0.5;
+      for (const [edge, xi] of [[cs.a, x1], [cs.b, x2]]) {
+        if (edge >= st.i0 && edge <= st.i1) {
+          const x = Math.round(xi) + 0.5;
+          ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, panelB); ctx.stroke();
+        }
+      }
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+
+    // Volume pane (raw daily share volume, green/red bars matching the day's direction)
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.l, Math.round(volT) + 0.5); ctx.lineTo(st.w - PAD.r, Math.round(volT) + 0.5); ctx.stroke();
+    ctx.fillStyle = C.text; ctx.font = "600 10px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    ctx.fillText("VOLUME", PAD.l + 4, volT - 4);
+    {
+      const span2 = st.i1 - st.i0;
+      const bw = Math.max(1, (st.w - PAD.l - PAD.r) / Math.max(span2, 1) * 0.7);
+      for (let i = st.i0; i <= st.i1; i++) {
+        const vv = r.volume[i];
+        if (vv == null) continue;
+        const up = r.close[i] != null && r.open[i] != null && r.close[i] >= r.open[i];
+        const x = xAt(i), y = volAt(Math.min(vv, volumeMax));
+        ctx.fillStyle = up ? C.up : C.down; ctx.globalAlpha = 0.75;
+        ctx.fillRect(x - bw / 2, y, bw, volB - y);
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = C.text; ctx.textAlign = "right"; ctx.textBaseline = "top";
+      ctx.fillText(volFmt(volumeMax), st.w - PAD.r - 3, volT + 2);
+    }
+
+    // VB pane (10-day volatility)
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.l, Math.round(vbT) + 0.5); ctx.lineTo(st.w - PAD.r, Math.round(vbT) + 0.5); ctx.stroke();
+    ctx.fillStyle = C.text; ctx.font = "600 10px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    ctx.fillText("VB — 10-DAY VOLATILITY (ANNUALIZED)", PAD.l + 4, vbT - 4);
+    for (const [lv, col, lbl] of [[th.vol_trig, C.down, "sell ≥ " + th.vol_trig + "%"],
+                                  [th.vol_calm, C.up, "back in ≤ " + th.vol_calm + "%"]]) {
+      const y = Math.round(vAt(lv)) + 0.5;
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.7; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(st.w - PAD.r, y); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = col; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+      ctx.fillText(lbl, st.w - PAD.r - 3, y - 1);
+    }
+    ctx.beginPath(); ctx.strokeStyle = C.vol; ctx.lineWidth = 1.3;
+    let von = false;
+    for (let i = st.i0; i <= st.i1; i++) {
+      const v = r.vol[i];
+      if (v == null) { von = false; continue; }
+      const x = xAt(i), y = vAt(Math.min(v, vmax));
+      von ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), von = true);
+    }
+    ctx.stroke();
+
+    // VM pane (up-volume share, fixed 0-100 scale, single reference line at the override level)
+    const vmAt = v => vmT + (1 - v / 100) * SUBH;
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.l, Math.round(vmT) + 0.5); ctx.lineTo(st.w - PAD.r, Math.round(vmT) + 0.5); ctx.stroke();
+    ctx.fillStyle = C.text; ctx.font = "600 10px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    ctx.fillText("VM — UP-VOLUME SHARE (" + th.vm_win + "D)", PAD.l + 4, vmT - 4);
+    {
+      const y = Math.round(vmAt(th.vm_share)) + 0.5;
+      ctx.strokeStyle = C.up; ctx.globalAlpha = 0.7; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(st.w - PAD.r, y); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = C.up; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+      ctx.fillText("override ≥ " + th.vm_share + "%", st.w - PAD.r - 3, y - 1);
+    }
+    ctx.beginPath(); ctx.strokeStyle = C.vm; ctx.lineWidth = 1.3;
+    let vmon = false;
+    for (let i = st.i0; i <= st.i1; i++) {
+      const v = r.vm[i];
+      if (v == null) { vmon = false; continue; }
+      const x = xAt(i), y = vmAt(Math.max(0, Math.min(100, v)));
+      vmon ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), vmon = true);
+    }
+    ctx.stroke();
+
+    // Candlesticks (OHLC) — drawn before the MA lines so the trend lines sit on top
+    {
+      const span2 = st.i1 - st.i0;
+      const cw = Math.max(1, (st.w - PAD.l - PAD.r) / Math.max(span2, 1) * 0.6);
+      for (let i = st.i0; i <= st.i1; i++) {
+        const o = r.open[i], h = r.high[i], l = r.low[i], c = r.close[i];
+        if (o == null || h == null || l == null || c == null) continue;
+        const x = xAt(i), up = c >= o;
+        ctx.strokeStyle = ctx.fillStyle = up ? C.up : C.down;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, yAt(h)); ctx.lineTo(x, yAt(l)); ctx.stroke();
+        const yO = yAt(o), yC = yAt(c);
+        const bodyTop = Math.min(yO, yC), bodyH = Math.max(1, Math.abs(yC - yO));
+        ctx.fillRect(x - cw / 2, bodyTop, cw, bodyH);
+      }
+    }
+
+    for (const sr of MA_SERIES) {
+      const arr = r[sr.key];
+      ctx.beginPath(); ctx.strokeStyle = cssVar(sr.varName); ctx.lineWidth = sr.w; ctx.globalAlpha = sr.alpha;
+      let on = false;
+      for (let i = st.i0; i <= st.i1; i++) {
+        const v = arr[i];
+        if (v == null) { on = false; continue; }
+        const x = xAt(i), y = yAt(v);
+        on ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), on = true);
+      }
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+
+    for (const iStr in crossByIdx) {
+      const i = +iStr;
+      if (i < st.i0 || i > st.i1 || r.smaF[i] == null) continue;
+      const x = xAt(i), y = yAt(r.smaF[i]);
+      ctx.save();
+      ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+      if (crossByIdx[i] === "golden") {
+        ctx.fillStyle = C.gcline; ctx.fillRect(-4, -4, 8, 8);
+      } else {
+        ctx.fillStyle = C.card; ctx.strokeStyle = C.gcline; ctx.lineWidth = 2;
+        ctx.fillRect(-4, -4, 8, 8); ctx.strokeRect(-4, -4, 8, 8);
+      }
+      ctx.restore();
+    }
+
+    markerPts.length = 0;
+    ctx.font = "600 9px 'Segoe UI', system-ui, sans-serif";
+    for (const iStr in markByIdx) {
+      const i = +iStr;
+      if (i < st.i0 || i > st.i1) continue;
+      for (const mk of markByIdx[i]) {
+        const x = xAt(i), y = yAt(r.close[i]);
+        ctx.fillStyle = mk.win ? C.up : C.down;
+        if (mk.kind === "entry") {
+          ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 7); ctx.fill();
+          if (mk.e.in_cause === "momo") {
+            ctx.strokeStyle = mk.win ? C.up : C.down; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(x, y, 7.5, 0, 7); ctx.stroke();
+          }
+          ctx.textAlign = "center"; ctx.textBaseline = "top";
+          ctx.fillText(String(mk.num + 1), x, y + 9);
+          markerPts.push({ x, y, mk });
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(x, y - 6); ctx.lineTo(x - 5.5, y - 16); ctx.lineTo(x + 5.5, y - 16);
+          ctx.closePath(); ctx.fill();
+          if (mk.open) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.stroke(); }
+          ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+          ctx.fillText(String(mk.num + 1), x, y - 18);
+          markerPts.push({ x, y: y - 11, mk });
+        }
+      }
+    }
+
+    ctx.font = "600 11px 'Segoe UI', system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const cs of crSpans) {
+      const a = Math.max(cs.a, st.i0), b = Math.min(cs.b, st.i1);
+      if (b <= a) continue;
+      const x1 = xAt(a), x2 = xAt(b);
+      if (x2 - x1 < ctx.measureText(cs.name).width + 10) continue;
+      ctx.fillStyle = C.down; ctx.globalAlpha = 0.8;
+      ctx.fillText(cs.name, (x1 + x2) / 2, PAD.t + 4);
+      ctx.globalAlpha = 1;
+    }
+
+    if (st.hover >= st.i0 && st.hover <= st.i1) {
+      const x = Math.round(xAt(st.hover)) + 0.5;
+      ctx.strokeStyle = C.text; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.globalAlpha = 0.6;
+      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, panelB); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(xAt(st.hover), yAt(r.close[st.hover]), 3.5, 0, 7);
+      ctx.fillStyle = C.accent; ctx.fill();
+      if (r.volume[st.hover] != null) {
+        const up = r.close[st.hover] != null && r.open[st.hover] != null && r.close[st.hover] >= r.open[st.hover];
+        ctx.beginPath(); ctx.arc(xAt(st.hover), volAt(Math.min(r.volume[st.hover], volumeMax)), 3, 0, 7);
+        ctx.fillStyle = up ? C.up : C.down; ctx.fill();
+      }
+      if (r.vol[st.hover] != null) {
+        ctx.beginPath(); ctx.arc(xAt(st.hover), vAt(Math.min(r.vol[st.hover], vmax)), 3, 0, 7);
+        ctx.fillStyle = C.vol; ctx.fill();
+      }
+      if (r.vm[st.hover] != null) {
+        ctx.beginPath(); ctx.arc(xAt(st.hover), vmAt(Math.max(0, Math.min(100, r.vm[st.hover]))), 3, 0, 7);
+        ctx.fillStyle = C.vm; ctx.fill();
+      }
+    }
+  }
+
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const m = raw / p;
+    return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+  }
+
+  let panning = false, panX = 0, panY = 0, panI0 = 0, moved = false;
+  cv.addEventListener("mousedown", e => {
+    panning = true; moved = false; panX = e.offsetX; panY = e.offsetY; panI0 = st.i0;
+    cv.style.cursor = "grabbing";
+  });
+  cv.addEventListener("mousemove", e => {
+    if (panning) {
+      if (Math.abs(e.offsetX - panX) + Math.abs(e.offsetY - panY) > 3) moved = true;
+      const span = st.i1 - st.i0;
+      const perPx = span / Math.max(st.w - PAD.l - PAD.r, 1);
+      let ni0 = Math.round(panI0 - (e.offsetX - panX) * perPx);
+      ni0 = Math.max(0, Math.min(ni0, n - 1 - span));
+      st.i0 = ni0; st.i1 = ni0 + span;
+      tt.style.display = "none"; st.hover = -1;
+      draw();
+      return;
+    }
+    st.hover = Math.max(st.i0, Math.min(st.i1, iAt(e.offsetX)));
+    draw();
+    showTip(st.hover, e);
+  });
+  window.addEventListener("mouseup", () => {
+    if (panning) { panning = false; cv.style.cursor = "crosshair"; }
+  });
+  cv.addEventListener("click", e => {
+    if (moved) return;
+    let best = null, bd = 1e9;
+    for (const mp of markerPts) {
+      const d2 = Math.abs(mp.x - e.offsetX) + Math.abs(mp.y - e.offsetY);
+      if (d2 < bd) { bd = d2; best = mp; }
+    }
+    if (best && bd <= 14) {
+      const row = document.getElementById(`eprow-${t}-${best.mk.num}`);
+      if (row) {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+      }
+    }
+  });
+  cv.addEventListener("mouseleave", () => {
+    panning = false; cv.style.cursor = "crosshair";
+    st.hover = -1; tt.style.display = "none"; draw();
+  });
+  cv.addEventListener("dblclick", () => { st.i0 = 0; st.i1 = n - 1; setRangeBtn("all"); draw(); });
+  cv.addEventListener("wheel", e => {
+    e.preventDefault();
+    const span = st.i1 - st.i0;
+    const factor = e.deltaY > 0 ? 1.25 : 0.8;
+    const newSpan = Math.max(10, Math.min(Math.round(span * factor), n - 1));
+    if (newSpan === span) return;
+    const frac = Math.max(0, Math.min(1, (e.offsetX - PAD.l) / Math.max(st.w - PAD.l - PAD.r, 1)));
+    const center = st.i0 + span * frac;
+    let ni0 = Math.round(center - newSpan * frac);
+    ni0 = Math.max(0, Math.min(ni0, n - 1 - newSpan));
+    st.i0 = ni0; st.i1 = ni0 + newSpan;
+    st.hover = -1; tt.style.display = "none";
+    draw();
+  }, { passive: false });
+
+  function setRangeBtn(rk) {
+    document.querySelectorAll("#rb-" + t + " button").forEach(x =>
+      x.classList.toggle("on", x.dataset.r === rk));
+  }
+  document.querySelectorAll("#rb-" + t + " button").forEach(b => {
+    b.onclick = () => {
+      const m = { "all": n, "10y": 2520, "5y": 1260, "1y": 252 }[b.dataset.r];
+      st.i1 = n - 1;
+      st.i0 = b.dataset.r === "all" ? 0 : Math.max(0, n - m);
+      setRangeBtn(b.dataset.r);
+      draw();
+    };
+  });
+
+  document.querySelectorAll(`#panel-${t} tr.eprow`).forEach(row => {
+    row.onclick = () => {
+      const e = r.episodes[+row.dataset.ep];
+      const a = Math.max(0, e.exit_i - 60);
+      const b = Math.min(n - 1, (e.reenter_i != null ? e.reenter_i : e.exit_i) + 60);
+      st.i0 = a; st.i1 = b;
+      setRangeBtn("");
+      draw();
+      cv.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+  });
+
+  function showTip(i, e) {
+    const inMkt = !r.out[i];
+    const v = r.vol[i], f = r.smaF[i], sl = r.smaS[i], vmv = r.vm[i];
+    const o = r.open[i], h = r.high[i], l = r.low[i], c = r.close[i], vol = r.volume[i];
+    const vcls = v == null ? "" : v >= th.vol_trig ? "neg" : v <= th.vol_calm ? "pos" : "";
+    const vmcls = vmv == null ? "" : vmv >= th.vm_share ? "pos" : "";
+    const candleCls = o == null || c == null ? "" : c >= o ? "pos" : "neg";
+    let html = `<div class="tdate">${dShort(r.dates[i])} <span style="color:var(${inMkt ? "--up" : "--down"})">· ${inMkt ? "IN" : "OUT"}</span></div>
+      <div class="trow"><span>Open</span><b>${fmtP(r, o)}</b></div>
+      <div class="trow"><span>High</span><b>${fmtP(r, h)}</b></div>
+      <div class="trow"><span>Low</span><b>${fmtP(r, l)}</b></div>
+      <div class="trow"><span>Close</span><b class="${candleCls}">${fmtP(r, c)}</b></div>
+      <div class="trow"><span>Volume</span><b>${vol == null ? "–" : volFmt(vol)}</b></div>
+      <div class="trow"><span>${th.ma_fast}-day avg</span><b>${fmtP(r, f)}</b></div>
+      <div class="trow"><span>${th.ma_slow}-day avg</span><b>${fmtP(r, sl)}</b></div>
+      <div class="trow"><span>Trend</span><b>${f == null || sl == null ? "–" : th.ma_fast + "d " + (f >= sl ? "above" : "below") + " " + th.ma_slow + "d"}</b></div>
+      <div class="trow"><span>VB — 10-day vol</span><b class="${vcls}">${v == null ? "–" : fmt(v, 1) + "%"}</b></div>
+      <div class="trow"><span>Vol levels</span><b>sell &ge; ${th.vol_trig}% · in &le; ${th.vol_calm}%</b></div>
+      <div class="trow"><span>VM — up-vol share (${th.vm_win}d)</span><b class="${vmcls}">${vmv == null ? "–" : fmt(vmv, 0) + "%"}</b></div>`;
+    if (crossByIdx[i])
+      html += `<div class="sig" style="color:var(--gcline)">◆ ${crossByIdx[i] === "golden"
+        ? "Golden cross — " + th.ma_fast + "d crossed above " + th.ma_slow + "d"
+        : "Death cross — " + th.ma_fast + "d crossed below " + th.ma_slow + "d"}</div>`;
+    for (const mk of markByIdx[i] || []) {
+      const lbl = mk.kind === "entry"
+        ? `#${mk.num + 1} ● Buy back — ${IN_NAME[mk.e.in_cause]}: ${mk.e.in_reading}`
+        : `#${mk.num + 1} ▲ Sell — ${OUT_NAME[mk.e.cause]}: ${mk.e.out_reading}`;
+      const res = mk.e.open ? "still out" : (mk.win ? "avoided " : "whipsaw ") + pct(mk.e.market_chg_pct);
+      html += `<div class="sig ${mk.win ? "pos" : "neg"}">${lbl} (${res})</div>`;
+    }
+    tt.innerHTML = html;
+    tt.style.display = "block";
+    const bw = tt.offsetWidth;
+    let x = e.offsetX + 16;
+    if (x + bw > st.w - 4) x = e.offsetX - bw - 16;
+    tt.style.left = x + "px";
+    tt.style.top = Math.max(4, Math.min(e.offsetY - 20, st.h - tt.offsetHeight - 4)) + "px";
+  }
+
+  const ro = new ResizeObserver(() => { if (cv.closest(".panel").classList.contains("active")) draw(); });
+  ro.observe(cv);
+  return { draw, resizeDraw: () => requestAnimationFrame(draw) };
+}
+
+function redrawActive() {
+  const act = document.querySelector(".panel.active");
+  if (act) { const id = act.id.replace("panel-", ""); if (charts[id]) charts[id].resizeDraw(); }
+}
+if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawActive);
+new MutationObserver(redrawActive).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+activate("OVERVIEW");
+</script>

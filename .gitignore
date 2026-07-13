@@ -10,6 +10,7 @@
 /scripts/*
 !/scripts/update_data.py
 !/scripts/monitor_build.py
+!/scripts/combo_v2_build.py
 !/scripts/examine_cutoffs.py
 !/scripts/leading_pairs.py
 !/scripts/market_regime.py
@@ -22,6 +23,8 @@
 /dashboard/*
 !/dashboard/monitor_template.html
 !/dashboard/Bull_Bear_Monitor.html
+!/dashboard/combo_v2_template.html
+!/dashboard/Bull_Bear_Monitor_v2.html
 
 !/data
 /data/*
