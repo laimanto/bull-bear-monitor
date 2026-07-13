@@ -1,15 +1,25 @@
 """
 Bull-Bear Monitor — v1: compute + build.
 
-ONE generic rule set on every market (validated across 10 indexes,
-rounds 26-28 in docs/EXPERIMENT_LOG.md):
+Per-market rule set, validated in docs/EXPERIMENT_LOG.md (rounds 26-28
+for the base combo shape; rounds 32/33/53 for RC2; round 66 for the
+per-market VB calibration):
 
   Golden cross 50/200   sell when the 50-day average closes below the
                         200-day average; buy back when it closes above
-  Volatility breaker    sell when 10-day realized vol reaches 45%
-  45 / 18               annualized; buy back once it settles <= 18%
-  Recovery override     >= 10 of the last 12 sessions closed up AND
-                        vol <= 20%: buy back even while alarms are on
+  Volatility breaker    sell when 10-day realized vol reaches the
+                        market's own trigger (see VB_LEVELS); buy back
+                        once it settles back to that market's own calm level
+  Recovery override     up-day volume share of the trailing 12 sessions
+  (RC2)                 >= 60% AND vol <= 20% AND price within 15% of
+                        its 200-day average: buy back even while alarms
+                        are on
+
+VB is calibrated per market (round 66): QQQ/SPY/FTSE keep the original
+45%/18% (a percentile-pair search found raw levels beat any percentile-
+matched pair for this low-volatility cluster); HSI/Nikkei 225/HSCEI —
+the higher-volatility cluster — are percentile-matched to QQQ's own
+45%/18% position (its p92/p50) on each market's own vol10 history.
 
 Plus the QQQ MAXIMIZER: the volatility breaker 45/18 alone (no trend
 filter) — QQQ-specific aggressive variant (rounds 9/21/24).
@@ -37,8 +47,59 @@ import regime_dashboard_data as rd
 import tune_regime as tr
 
 GC = (50, 200)
-VB_TRIG, VB_CALM = 0.45, 0.18
-MOMO_K, MOMO_N, MOMO_CALM = rd.MOMO_K, rd.MOMO_N, rd.MOMO_CALM
+# per-market VB calibration (round 66): QQQ/SPY/FTSE raw 45/18 (own
+# percentile pair already, and beats any re-matched pair for this
+# cluster); HSI/N225/HSCEI percentile-matched to QQQ's own p92/p50.
+VB_LEVELS = {
+    "QQQ": (0.45, 0.18), "QQQMAX": (0.45, 0.18),
+    "SPY": (0.45, 0.18), "FTSE": (0.45, 0.18),
+    "HSI": (0.375, 0.184), "N225": (0.346, 0.186), "HSCEI": (0.505, 0.230),
+}
+# RC2 (rounds 32/33/53): replaces the older 10/12-up-days Recovery rule
+RC2_SHARE, RC2_WIN, RC2_CALM, RC2_P200_FLOOR = 0.60, 12, 0.20, -0.15
+
+
+def pct1(x):
+    s = f"{x * 100:.1f}"
+    return s[:-2] if s.endswith(".0") else s
+
+
+# VB first — it is the dominant alarm; GC and RC complete the combo
+def rules_for(vb_trig, vb_calm):
+    return [
+        {"alarm": f"VB — Volatility breaker {pct1(vb_trig)}/{pct1(vb_calm)}",
+         "detects": "Fast, violent crashes",
+         "sell": f"10-day volatility rises to {pct1(vb_trig)}% annualized",
+         "buy": f"10-day volatility settles back below {pct1(vb_calm)}% annualized — the market has genuinely calmed"},
+        {"alarm": "GC — Golden cross 50/200", "detects": "Slow, grinding bear markets",
+         "sell": "The 50-day average closes below the 200-day average (death cross)",
+         "buy": "The 50-day average closes back above the 200-day average (golden cross)"},
+        {"alarm": "RC — Recovery override (RC2)", "detects": "A real rebound taking hold",
+         "sell": "Never sells — a buy-side override only",
+         "buy": (f"Up-day volume share of the last {RC2_WIN} sessions' total volume is >= "
+                 f"{pct1(RC2_SHARE)}% AND 10-day volatility is <= {pct1(RC2_CALM)}% AND price is within "
+                 f"{pct1(-RC2_P200_FLOOR)}% of its 200-day average — buys back even while the alarms above are still on")},
+    ]
+
+
+def rc2_flags(d, p):
+    """RC2 (rounds 32/33/53): up-day volume share of the trailing RC2_WIN
+    sessions >= RC2_SHARE, AND 10-day vol <= RC2_CALM, AND price within
+    -RC2_P200_FLOOR of its 200-day average. Returns (flags, up_share_series)."""
+    c = pd.Series(d["close"])
+    v = pd.Series(d["volume"])
+    up = c.pct_change() > 0
+    us = (v.where(up, 0.0)).rolling(RC2_WIN).sum() / v.rolling(RC2_WIN).sum()
+    vol10, s200, cl = p["vol10"], p["s200"], p["cl"]
+    out = []
+    for i in range(len(cl)):
+        u, vv, s = us.iloc[i], vol10[i], s200[i]
+        ok = (not math.isnan(u) and u >= RC2_SHARE
+              and not math.isnan(vv) and vv <= RC2_CALM
+              and not math.isnan(s) and (cl[i] / s - 1) >= RC2_P200_FLOOR)
+        out.append(ok)
+    return out, us
+
 
 #           key       symbol    tab label      full name                        currency
 MARKETS = [("QQQ",    "QQQ",    "QQQ",         "Invesco QQQ (Nasdaq-100)",      "$"),
@@ -48,21 +109,6 @@ MARKETS = [("QQQ",    "QQQ",    "QQQ",         "Invesco QQQ (Nasdaq-100)",      
            ("HSCEI",  "^HSCE",  "HSCEI",       "Hang Seng China Enterprises",   ""),
            ("N225",   "^N225",  "Nikkei 225",  "Nikkei 225",                    ""),
            ("FTSE",   "^FTSE",  "FTSE 100",    "FTSE 100",                      "")]
-
-# VB first — it is the dominant alarm; GC and RC complete the combo
-RULES_COMBO = [
-    {"alarm": "VB — Volatility breaker 45/18", "detects": "Fast, violent crashes",
-     "sell": "10-day volatility rises to 45% annualized (≈ 2.8% average daily moves)",
-     "buy": "10-day volatility settles back below 18% annualized — the market has genuinely calmed"},
-    {"alarm": "GC — Golden cross 50/200", "detects": "Slow, grinding bear markets",
-     "sell": "The 50-day average closes below the 200-day average (death cross)",
-     "buy": "The 50-day average closes back above the 200-day average (golden cross)"},
-    {"alarm": "RC — Recovery override", "detects": "A real rebound taking hold",
-     "sell": "Never sells — a buy-side override only",
-     "buy": ("At least 10 of the last 12 sessions closed up AND 10-day volatility is "
-             "under 20% — buys back even while the alarms above are still on")},
-]
-RULES_VB = [RULES_COMBO[0]]
 
 # (name, first trough date, last trough date, restricted-to-keys or None)
 CRISIS_LABELS = [
@@ -152,13 +198,14 @@ def run_market(key, symbol, tab, full_name, cur):
     n = len(cl)
     is_max = key == "QQQMAX"
 
+    vb_trig, vb_calm = VB_LEVELS[key]
     gc_out = lp.flags_for(cl, *GC)
-    vb_out = rd.vol_breaker(p, VB_TRIG, VB_CALM)
-    momo = rd.momo_days(d, p)
+    vb_out = rd.vol_breaker(p, vb_trig, vb_calm)
+    rc2, up_share = rc2_flags(d, p)
     off = [False] * n
     active_gc = off if is_max else gc_out
-    active_momo = off if is_max else momo
-    comb_out = rd.combine_all(active_gc, vb_out, off, active_momo)
+    active_rc2 = off if is_max else rc2
+    comb_out = rd.combine_all(active_gc, vb_out, off, active_rc2)
 
     eq_bh = [c / cl[0] for c in cl]
     eq_gc, _, _ = mr.equity(cl, gc_out)
@@ -168,7 +215,6 @@ def run_market(key, symbol, tab, full_name, cur):
     smaF = c_ser.rolling(GC[0]).mean().to_numpy()
     smaS = c_ser.rolling(GC[1]).mean().to_numpy()
     vol10 = p["vol10"]
-    up_n = (c_ser.pct_change() > 0).rolling(MOMO_N).sum().to_numpy()
 
     def vpct(v):
         return f"{v * 100:.0f}%"
@@ -182,15 +228,16 @@ def run_market(key, symbol, tab, full_name, cur):
         if cause in ("gc", "both"):
             parts.append(gc_reading(i, True))
         if cause in ("cb", "both"):
-            parts.append(f"10-day vol {vpct(vol10[i])} ≥ trigger {vpct(VB_TRIG)}")
+            parts.append(f"10-day vol {vpct(vol10[i])} ≥ trigger {vpct(vb_trig)}")
         return " · ".join(parts)
 
     def in_fields(e):
-        if active_momo[e] and (active_gc[e] or vb_out[e]):
-            return "momo", (f"{int(up_n[e])}/{MOMO_N} up days · 10-day vol "
-                            f"{vpct(vol10[e])} ≤ {vpct(MOMO_CALM)}")
+        if active_rc2[e] and (active_gc[e] or vb_out[e]):
+            p200 = p["cl"][e] / p["s200"][e] - 1
+            return "momo", (f"up-vol share {vpct(up_share.iloc[e])} ≥ {vpct(RC2_SHARE)} · 10-day vol "
+                            f"{vpct(vol10[e])} ≤ {vpct(RC2_CALM)} · price {p200*100:+.0f}% vs 200-day avg")
         v = vol10[e]
-        parts = [f"10-day vol {vpct(v)} ≤ calm {vpct(VB_CALM)}" if v <= VB_CALM
+        parts = [f"10-day vol {vpct(v)} ≤ calm {vpct(vb_calm)}" if v <= vb_calm
                  else f"10-day vol {vpct(v)} (breaker not tripped)"]
         if not is_max:
             parts.append(gc_reading(e, False))
@@ -244,10 +291,10 @@ def run_market(key, symbol, tab, full_name, cur):
     res = {
         "key": key, "symbol": symbol, "tab": tab, "full_name": full_name,
         "cur": cur, "is_max": is_max,
-        "strategy_label": ("Maximizer: VB (volatility breaker 45/18) alone — no trend filter "
+        "strategy_label": (f"Maximizer: VB (volatility breaker {pct1(vb_trig)}/{pct1(vb_calm)}) alone — no trend filter "
                            "(QQQ-specific aggressive variant)") if is_max else
-                          "Combo: VB (volatility breaker 45/18) + GC (golden cross 50/200) + RC (Recovery override)",
-        "rules": RULES_VB if is_max else RULES_COMBO,
+                          f"Combo: VB (volatility breaker {pct1(vb_trig)}/{pct1(vb_calm)}) + GC (golden cross 50/200) + RC (Recovery override, RC2)",
+        "rules": [rules_for(vb_trig, vb_calm)[0]] if is_max else rules_for(vb_trig, vb_calm),
         "first_date": dates[0], "last_date": dates[-1],
         "dates": dates,
         "close": [round(float(v), 2) for v in cl],
@@ -256,8 +303,9 @@ def run_market(key, symbol, tab, full_name, cur):
         "out": [1 if o else 0 for o in comb_out],
         "crosses": crosses,
         "thresholds": {"gc_fast": GC[0], "gc_slow": GC[1],
-                       "vol_trig": VB_TRIG * 100, "vol_calm": VB_CALM * 100,
-                       "momo_k": MOMO_K, "momo_n": MOMO_N, "momo_calm": MOMO_CALM * 100},
+                       "vol_trig": round(vb_trig * 100, 1), "vol_calm": round(vb_calm * 100, 1),
+                       "rc2_share": RC2_SHARE * 100, "rc2_win": RC2_WIN, "rc2_calm": RC2_CALM * 100,
+                       "rc2_p200_floor": -RC2_P200_FLOOR * 100},
         "episodes": episodes,
         "crises": crises,
         "now": {"vb": bool(vb_out[-1]), "gc_below": bool(gc_out[-1])},

@@ -148,7 +148,7 @@
     <div class="stamp">__BUILD_TS__</div>
   </div>
   <div class="sub">
-    One generic rule set on every market — <b>VB</b> (volatility breaker 45/18 — fast crashes) +
+    Same rule shape on every market — <b>VB</b> (volatility breaker, calibrated per market — fast crashes) +
     <b>GC</b> (golden cross 50/200 — slow bears) + <b>RC</b> (Recovery override — early buy-back) —
     all-in or all-out at daily closes.
     Green pip = IN the market, red pip = OUT. Cash earns nothing while out; no trading costs or taxes modeled.
@@ -218,7 +218,7 @@ addTab("OVERVIEW", "Overview", null);
     const chip = po.out
       ? `<span class="chip outchip">OUT</span>`
       : `<span class="chip inchip">IN</span>`;
-    const name = r.is_max ? `${r.tab} <span style="color:var(--muted); font-weight:400">(VB 45/18 only)</span>`
+    const name = r.is_max ? `${r.tab} <span style="color:var(--muted); font-weight:400">(VB ${r.thresholds.vol_trig}/${r.thresholds.vol_calm} only)</span>`
                           : `${r.tab} <span style="color:var(--muted); font-weight:400">· ${r.full_name}</span>`;
     rows += `<tr>
       <td class="l" style="font-weight:650">${name}</td>
@@ -242,9 +242,10 @@ addTab("OVERVIEW", "Overview", null);
         <th>Buy &amp; hold max drawdown</th><th>Strategy max drawdown</th><th>Exits</th>
       </tr></thead><tbody>${rows}</tbody>
       <tfoot><tr><td colspan="11" class="l">
-        "Strategy" = the combo — VB (volatility breaker 45/18) + GC (golden cross 50/200) + RC (Recovery override) —
-        identical rules on every market; the <b>QQQ Maximizer</b> row runs VB alone (no trend filter), a QQQ-specific
-        aggressive variant. Each market is measured over its own full data history ("Data since"), so ROIs are not
+        "Strategy" = the combo — VB (volatility breaker, calibrated per market) + GC (golden cross 50/200) +
+        RC (Recovery override) — same rule shape on every market, but VB's own trigger/calm levels are tuned per
+        market (see each tab's Strategy card); the <b>QQQ Maximizer</b> row runs VB alone (no trend filter), a
+        QQQ-specific aggressive variant. Each market is measured over its own full data history ("Data since"), so ROIs are not
         comparable across markets — compare the strategy columns against buy &amp; hold <b>within</b> a row.
         Strategy vs buy &amp; hold = final strategy wealth ÷ final buy-and-hold wealth. Expect the strategy to trail
         buy &amp; hold in long bull decades and to earn its edge in extended bears — its constant is the drawdown cut.
@@ -278,8 +279,8 @@ for (const k of KEYS) {
     rrows += `<tr><td class="l">${ru.alarm}</td><td class="l">${ru.detects}</td>
               <td class="l">${ru.sell}</td><td class="l">${ru.buy}</td></tr>`;
   const combineFoot = r.is_max
-    ? `One alarm only: <b>SELL</b> at the close where 10-day volatility reaches 45%; <b>BUY BACK</b> at the first close
-       where it has settled to 18% or below. "10-day volatility" = standard deviation of the last 10 daily moves,
+    ? `One alarm only: <b>SELL</b> at the close where 10-day volatility reaches ${th.vol_trig}%; <b>BUY BACK</b> at the first close
+       where it has settled to ${th.vol_calm}% or below. "10-day volatility" = standard deviation of the last 10 daily moves,
        annualized — it counts moves in both directions. The 50/200-day averages stay on the chart as a reference,
        but this variant never trades on them.`
     : `<b>SELL</b> at the close where <b>ANY</b> alarm fires. <b>BUY BACK</b> at the first close where <b>EVERY</b>
@@ -297,9 +298,9 @@ for (const k of KEYS) {
   const L = r.dates.length - 1;
   const vNow = r.vol[L], fNow = r.smaF[L], sNow = r.smaS[L];
   const trendUp = fNow != null && sNow != null && fNow >= sNow;
-  const volState = vNow >= th.vol_trig ? ["neg", "at/above the 45% sell trigger"]
-    : vNow <= th.vol_calm ? ["pos", "below the 18% calm level"]
-    : ["", "between calm 18% and trigger 45%"];
+  const volState = vNow >= th.vol_trig ? ["neg", `at/above the ${th.vol_trig}% sell trigger`]
+    : vNow <= th.vol_calm ? ["pos", `below the ${th.vol_calm}% calm level`]
+    : ["", `between calm ${th.vol_calm}% and trigger ${th.vol_trig}%`];
   let posNote;
   if (!po.out) {
     posNote = "in since " + dShort(po.since) + " · " + po.nDays + " days";
@@ -381,7 +382,7 @@ for (const k of KEYS) {
       <th>Days out</th><th>Market move while out</th><th>Wealth effect</th><th>Cumulative</th><th class="l">During</th><th class="l">Result</th>
     </tr></thead><tbody>${rows}</tbody>
     <tfoot><tr><td colspan="11" class="l">
-      Triggers: <b>VB</b> — volatility breaker (10-day vol ≥ 45% out, ≤ 18% back in) · <b>GC</b> — death cross out,
+      Triggers: <b>VB</b> — volatility breaker (10-day vol ≥ ${th.vol_trig}% out, ≤ ${th.vol_calm}% back in) · <b>GC</b> — death cross out,
       golden cross back in (50/200-day averages) · <b>RC</b> — Recovery override buy-back · ALL CLEAR — every alarm off.
       # matches the numbered markers on the chart — click a marker to jump here, click a row to zoom the chart to that episode.
       Market move while out &lt; 0 = the pair sidestepped a fall (<b style="color:var(--up)">AVOIDED</b>);
@@ -444,7 +445,7 @@ for (const k of KEYS) {
       </div>
       <div class="hint">Price with the ${th.gc_fast}/${th.gc_slow}-day averages · ◆ on the purple line = golden/death cross ·
         ▲ sell, ● buy back (ringed ● = Recovery override) — numbers match the trigger log below; click a marker to jump to its row ·
-        lower pane: 10-day volatility vs the 45% sell trigger and 18% calm level ·
+        lower pane: 10-day volatility vs the ${th.vol_trig}% sell trigger and ${th.vol_calm}% calm level ·
         hover for readings · scroll to zoom · drag to pan · double-click to reset</div>
     </div>`;
 
