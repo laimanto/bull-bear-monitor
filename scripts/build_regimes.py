@@ -37,14 +37,28 @@ Some markets' volume data has a real Yahoo data-quality gap (all-zero) before
 a cutover date, not real illiquidity - VOL_START truncates history to each
 market's own volume-clean start before any feature is built.
 
+Model caching (2026-07-17, so the DAILY run doesn't re-walk 20-40 years of
+history just to add one new day): each year's fit only ever needs to happen
+ONCE - the walk-forward already refits on every January 1st and holds that
+one model+scaler fixed for the rest of the year, so a persisted model is
+valid for every subsequent day of the same calendar year. models/{market}_
+{stage}_{year}.joblib caches (scaler, lambda, model) per market/stage/year;
+if a cache file exists it is loaded and only predict_online (cheap - a
+forward pass through an already-fit clustering rule, not a refit) is re-run
+on the now-slightly-longer feature history; if it doesn't exist (a new
+year, or the one-time historical backfill), the expensive fit + 3-year
+validation lambda search runs once and the result is cached before moving
+on. Every subsequent daily run for that year is then just a cache hit.
+
 Usage: python build_regimes.py [MARKET ...]   (default: all 11 production
-markets). Writes results/regimes_{MARKET}_V6.csv.
+markets). Writes results/regimes_{MARKET}_V6.csv and populates models/.
 """
 import os
 import sys
 import warnings
 import numpy as np
 import pandas as pd
+import joblib
 from joblib import Parallel, delayed
 
 from jumpmodels.jump import JumpModel
@@ -54,6 +68,8 @@ warnings.filterwarnings("ignore")
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(DIR, "..", "data")
+MODELS_DIR = os.path.join(DIR, "..", "models")
+os.makedirs(MODELS_DIR, exist_ok=True)
 RESULTS_DIR = os.path.join(DIR, "..", "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
@@ -137,9 +153,12 @@ def eval_lambda(lam, Xf, Xv, val_mask, ret_fit, ret_val, rf_val):
     return lam, strategy_sharpe(ret_val, rf_val, states_val)
 
 
-def yearly(X, ret, rf, year):
+def _fit_year(X, ret, rf, year):
+    """The expensive path: 3-year-validation lambda search + final fit on
+    the full expanding training window. Only ever called once per
+    market/stage/year - yearly() below skips straight to inference if a
+    cached fit already exists."""
     train_end = pd.Timestamp(f"{year - 1}-12-31")
-    test_end = pd.Timestamp(f"{year}-12-31")
     X_train = X.loc[:train_end]
     val_start = pd.Timestamp(f"{year - 1 - VAL_YEARS}-12-31")
     X_fit = X_train.loc[:val_start]
@@ -156,11 +175,53 @@ def yearly(X, ret, rf, year):
     Xt = scaler.fit_transform(X_train)
     jm = JumpModel(n_components=2, jump_penalty=lam, cont=False)
     jm.fit(Xt, ret_ser=ret.reindex(X_train.index), sort_by="cumret")
+    return scaler, jm, lam
+
+
+def yearly(X, ret, rf, year, is_complete, model_cache=None, output_cache=None):
+    """Online state + bear-probability, covering all of X's index through
+    this year's Dec 31 (matching the original API - callers use the shift(1)
+    of the WHOLE returned series to build the next stage's mask).
+
+    Two independent caches:
+      model_cache  - the fitted (scaler, model, lambda) for this year. Once
+                     a year is done, its model never needs refitting again;
+                     while a year is still in progress, the SAME model
+                     (fit once at the year's first run) is reused all year.
+      output_cache - the (states, lam, p_bear) RESULT for a COMPLETE year.
+                     A finished year's result can never change (no future
+                     data alters an already-settled past year), so once
+                     cached it is loaded directly and neither transform()
+                     nor predict_online() run again for it at all - this is
+                     what keeps a daily run from re-walking the entire
+                     history just to add one new day. Never used for the
+                     current (still-accumulating) year, whose result
+                     legitimately changes every day.
+
+    Caveat: caches are only valid for the data alignment they were built on.
+    If update_data.py --full ever re-aligns a market's whole history (the
+    dividend-adjustment drift fix noted in the README - worth doing
+    quarterly), delete that market's models/{market}_*.joblib files first
+    so every year rebuilds against the realigned series; otherwise the
+    cached years silently keep using the pre-realignment fit."""
+    if is_complete and output_cache and os.path.exists(output_cache):
+        return joblib.load(output_cache)
+
+    test_end = pd.Timestamp(f"{year}-12-31")
+    if model_cache and os.path.exists(model_cache):
+        scaler, jm, lam = joblib.load(model_cache)
+    else:
+        scaler, jm, lam = _fit_year(X, ret, rf, year)
+        if model_cache:
+            joblib.dump((scaler, jm, lam), model_cache)
     Xs = scaler.transform(X.loc[:test_end])
     states = pd.Series(jm.predict_online(Xs), index=Xs.index)
     c = np.asarray(jm.centers_)
     d = ((Xs.values[:, None, :] - c[None, :, :]) ** 2).sum(axis=2)
     p_bear = pd.Series(d[:, 0] / (d[:, 0] + d[:, 1] + 1e-12), index=Xs.index)
+
+    if is_complete and output_cache:
+        joblib.dump((states, lam, p_bear), output_cache)
     return states, lam, p_bear
 
 
@@ -214,19 +275,28 @@ def build_market(market):
     lam_out = pd.Series(index=idx, dtype=float)
     pbear_out = pd.Series(index=idx, dtype=float)
 
+    # A year is "complete" once a LATER year has data - i.e. every iteration
+    # except the very last (idx[-1].year is always the current, still-
+    # accumulating year). Complete years' output caches are permanent;
+    # only the current year is ever recomputed on a later run.
     for year in range(first_test, idx[-1].year + 1):
         test_end = pd.Timestamp(f"{year}-12-31")
         train_end = pd.Timestamp(f"{year - 1}-12-31")
         if X1.loc[str(year)].empty:
             continue
-        s1, lam1, _ = yearly(X1, ret, rf, year)
+        is_complete = year < idx[-1].year
+        model1 = os.path.join(MODELS_DIR, f"{market}_stage1_{year}.joblib")
+        model2 = os.path.join(MODELS_DIR, f"{market}_stage2_{year}.joblib")
+        out1 = os.path.join(MODELS_DIR, f"{market}_stage1_output_{year}.joblib")
+        out2 = os.path.join(MODELS_DIR, f"{market}_stage2_output_{year}.joblib")
+        s1, lam1, _ = yearly(X1, ret, rf, year, is_complete, model_cache=model1, output_cache=out1)
         mask = (s1.shift(1) == 1).reindex(idx).fillna(False)
         X2 = X1.copy()
         for col in ("vm5", "vm21", "ma200"):
             X2[col] = base[f"raw_{col}"].where(mask, 0.0)
         for col in ("clv_5", "clv_21"):
             X2[col] = base[col]
-        s2, lam2, pb2 = yearly(X2, ret, rf, year)
+        s2, lam2, pb2 = yearly(X2, ret, rf, year, is_complete, model_cache=model2, output_cache=out2)
         tm = (s2.index > train_end) & (s2.index <= test_end)
         state_out.loc[s2.index[tm]] = s2[tm]
         lam_out.loc[s2.index[tm]] = lam2

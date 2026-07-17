@@ -46,6 +46,12 @@ trade at close t+1), cash earns the 13-week T-bill while out.
   small yfinance call per ticker; re-fetches the last stored row so a
   provisional close self-heals). `--full` re-downloads a series from scratch.
 - `scripts/build_regimes.py` — the walk-forward + v6 decode, all 11 markets.
+  Each calendar year's model (scaler + JumpModel + selected jump penalty) is
+  fit **once** and cached in `models/{market}_{stage}_{year}.joblib`; every
+  day within that year is then cheap online inference on the cached model,
+  not a refit. A refit only happens automatically when a new year begins.
+  If `update_data.py --full` ever re-aligns a market's whole history,
+  delete that market's cache files first so every year refits consistently.
 - `scripts/build_payloads.py` — backtests each market's regime file into the
   dashboard's JSON payload (era performance, named crises, trade log).
 - `scripts/build_dashboard.py` — merges payloads + template into the final

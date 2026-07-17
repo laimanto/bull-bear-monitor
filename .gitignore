@@ -38,3 +38,14 @@
 !/results
 /results/*
 !/results/.gitkeep
+!/results/*.csv
+!/results/*.json
+
+# Cached per-market/stage/year fitted models (scaler + JumpModel + lambda) -
+# committed so daily runs only need online inference, never a historical
+# refit. One file per (market, stage, year); the set grows by ~22 files/year
+# (11 markets x 2 stages) as new years complete.
+!/models
+/models/*
+!/models/*.joblib
+!/models/.gitkeep
