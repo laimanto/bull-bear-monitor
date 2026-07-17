@@ -2,10 +2,12 @@ name: Daily update & publish
 
 on:
   schedule:
-    # 22:30 UTC Mon-Fri — after the US close (4pm ET = 20:00/21:00 UTC),
-    # hours after Asia (HK 08:00 UTC, Tokyo 06:00) and London (~16:30 UTC)
-    # closed, so every market's same-calendar-day close is final.
-    - cron: "30 22 * * 1-5"
+    # 00:30 UTC Tue-Sat = ~8-8:30pm US Eastern Mon-Fri evenings (a single
+    # fixed UTC value can't track DST exactly; this lands 7:30-8:30pm ET
+    # depending on season). Chosen because v6 covers gold futures, which
+    # settle LATER than the equity close this schedule was originally sized
+    # around - safely past both, with hours of buffer past Asia/Europe too.
+    - cron: "30 0 * * 2-6"
   workflow_dispatch:
 
 permissions:
@@ -37,10 +39,12 @@ jobs:
         run: python update_data.py
         working-directory: scripts
 
-      - name: Build the dashboards
+      - name: Build regimes, payloads and dashboards
         run: |
-          python monitor_build.py
-          python combo_v2_build.py
+          python build_regimes.py
+          python build_payloads.py
+          python build_dashboard.py ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
+          python build_dashboard.py ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
         working-directory: scripts
 
       - name: Commit refreshed data + dashboards
@@ -54,8 +58,8 @@ jobs:
       - name: Prepare Pages artifact
         run: |
           mkdir -p _site
-          cp "dashboard/Bull_Bear_Monitor_v2.html" _site/index.html
-          cp "dashboard/Bull_Bear_Monitor.html" _site/v1.html
+          cp "dashboard/index.html" _site/index.html
+          cp "dashboard/monitor2.html" _site/monitor2.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

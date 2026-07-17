@@ -1,4 +1,4 @@
-# Whitelist: ONLY the Bull-Bear Monitor pipeline is published.
+# Whitelist: ONLY the Bull-Bear Monitor v6 pipeline is published.
 # Research scripts, experiment docs, private notes and scratch data stay local.
 /*
 !/.gitignore
@@ -9,31 +9,31 @@
 !/scripts
 /scripts/*
 !/scripts/update_data.py
-!/scripts/monitor_build.py
-!/scripts/combo_v2_build.py
-!/scripts/examine_cutoffs.py
-!/scripts/leading_pairs.py
-!/scripts/market_regime.py
-!/scripts/regime_dashboard_data.py
-!/scripts/tune_regime.py
-!/scripts/crash_windows.py
-!/scripts/smoke_test.js
+!/scripts/build_regimes.py
+!/scripts/build_payloads.py
+!/scripts/build_dashboard.py
 
 !/dashboard
 /dashboard/*
-!/dashboard/monitor_template.html
-!/dashboard/Bull_Bear_Monitor.html
-!/dashboard/combo_v2_template.html
-!/dashboard/Bull_Bear_Monitor_v2.html
+!/dashboard/dashboard_template_prod.html
+!/dashboard/index.html
+!/dashboard/monitor2.html
 
 !/data
 /data/*
-!/data/QQQ.csv
-!/data/SPY.csv
-!/data/^HSI.csv
-!/data/^HSCE.csv
-!/data/^N225.csv
-!/data/^FTSE.csv
+!/data/ndx.csv
+!/data/gspc.csv
+!/data/hsi.csv
+!/data/hscei.csv
+!/data/ks11.csv
+!/data/nikkei.csv
+!/data/ftse.csv
+!/data/gold.csv
+!/data/arkq.csv
+!/data/msft.csv
+!/data/nvda.csv
+!/data/irx.csv
+!/data/JM_history.xlsx
 
 !/results
 /results/*

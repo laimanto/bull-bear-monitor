@@ -1,0 +1,259 @@
+"""Statistical Jump Model v6 — full walk-forward + decode, all 11 markets.
+
+Ported from the research repo's run_jm.py / exp_v2_masked.py / exp_v3_transfer.py
+/ make_v6.py (2026-07-17), consolidated into one production script. No logic
+changed from the tested/adopted versions - only paths and market-list
+trimming (research variants BL/V1/V2/QQQ/SPY/FUTU dropped; only the 11
+production markets kept).
+
+Pipeline per market, per test year (expanding window, refit every January 1):
+  1. Stage 1: fit a 2-state jump model on the 9-feature v1 architecture
+     (EWM return / log EWM downside deviation / Sortino ratio at 5/21/63-day
+     halflives, no clipping). Jump penalty re-selected each year by maximizing
+     the walk-forward strategy Sharpe over the training window's last 3 years.
+     Its ONLINE state path supplies a lagged bear-mask for stage 2.
+  2. Stage 2: same 9 features + 3 bear-masked recovery dims (up-volume-share
+     deviation at 5/21-day halflives, log distance to the 200d average - live
+     only when stage 1 said bear YESTERDAY) + 2 unconditional close-location-
+     in-range dims (5/21-day halflives). Same yearly lambda re-selection.
+     This stage's state/bear-probability is the raw model output.
+  3. Decode (v6): a flip to BEAR publishes after 2 consecutive raw bear days
+     AND the model's own bear-probability >= 0.60 that day (low-conviction
+     bear alarms are historically false and held back); a flip to BULL
+     publishes after 3 consecutive raw bull days (exits confirm faster than
+     re-entries; re-entries are deliberately not conviction-gated - every
+     such filter tested costs real money at V-shaped bottoms). On top of
+     both: once published, a flip holds for >= 8 trading days before another
+     flip may publish (a blocked flip retries daily; it publishes the moment
+     the hold expires if its raw run still stands, or never publishes if the
+     raw run dies first) - this guarantees the published signal never
+     reverses within 8 trading days, which is the whole point of a bull/bear
+     MONITOR: a signal that flip-flops in days destroys user confidence
+     regardless of backtest economics. Full reasoning and the decode studies
+     that ruled out every alternative live in the research repo's memory
+     notes; this file only carries the adopted result forward.
+
+Some markets' volume data has a real Yahoo data-quality gap (all-zero) before
+a cutover date, not real illiquidity - VOL_START truncates history to each
+market's own volume-clean start before any feature is built.
+
+Usage: python build_regimes.py [MARKET ...]   (default: all 11 production
+markets). Writes results/regimes_{MARKET}_V6.csv.
+"""
+import os
+import sys
+import warnings
+import numpy as np
+import pandas as pd
+from joblib import Parallel, delayed
+
+from jumpmodels.jump import JumpModel
+from jumpmodels.preprocess import StandardScalerPD
+
+warnings.filterwarnings("ignore")
+
+DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(DIR, "..", "data")
+RESULTS_DIR = os.path.join(DIR, "..", "results")
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+HALFLIVES = (5, 21, 63)
+LAMBDA_GRID = [0.0, 5.0, 10.0, 20.0, 30.0, 50.0, 80.0, 100.0, 150.0]
+VAL_YEARS = 3
+COST_BPS = 10
+TRADING_DAYS = 252
+
+# etf == index (no splice) for every production market; etf_start is each
+# series' own true earliest date; first_test is chosen so the training
+# window contains >=1 real crisis (checked against peak-to-trough returns).
+SYMBOLS = {
+    "NDX":    dict(etf="ndx.csv",    index="ndx.csv",    etf_start="1985-10-02", first_test=1999),
+    "SPX":    dict(etf="gspc.csv",   index="gspc.csv",   etf_start="1985-01-02", first_test=1999),
+    "HSI":    dict(etf="hsi.csv",    index="hsi.csv",    etf_start="1986-12-31", first_test=2010),
+    "HSCEI":  dict(etf="hscei.csv",  index="hscei.csv",  etf_start="1993-07-15", first_test=2010),
+    "KOSPI":  dict(etf="ks11.csv",   index="ks11.csv",   etf_start="1996-12-11", first_test=2002),
+    "NIKKEI": dict(etf="nikkei.csv", index="nikkei.csv", etf_start="1985-01-02", first_test=2010),
+    "FTSE":   dict(etf="ftse.csv",   index="ftse.csv",   etf_start="1985-01-02", first_test=2004),
+    "GOLD":   dict(etf="gold.csv",   index="gold.csv",   etf_start="2000-08-30", first_test=2014),
+    "ARKQ":   dict(etf="arkq.csv",   index="arkq.csv",   etf_start="2014-09-30", first_test=2021),
+    "MSFT":   dict(etf="msft.csv",   index="msft.csv",   etf_start="1986-03-13", first_test=1999),
+    "NVDA":   dict(etf="nvda.csv",   index="nvda.csv",   etf_start="1999-01-22", first_test=2003),
+}
+
+# Volume-clean truncation - Yahoo's volume data is a hard zero-gap (data
+# quality, not real illiquidity) before these dates for these markets.
+VOL_START = {
+    "HSI": "2002-01-01", "HSCEI": "2001-10-17", "NIKKEI": "2002-06-10",
+    "FTSE": "1999-01-04", "GOLD": "2008-01-01",
+}
+
+# v6 decode parameters
+N_BEAR, N_BULL = 2, 3
+TB = 0.60
+DWELL = 8
+
+
+def load_data(cfg):
+    etf = pd.read_csv(os.path.join(DATA_DIR, cfg["etf"]), index_col=0, parse_dates=True)
+    idx = pd.read_csv(os.path.join(DATA_DIR, cfg["index"]), index_col=0, parse_dates=True)
+    irx = pd.read_csv(os.path.join(DATA_DIR, "irx.csv"), index_col=0, parse_dates=True)
+    etf_close = etf["Close"].astype(float)
+    etf_ret = etf_close.pct_change()
+    idx_ret = idx["Close"].astype(float).pct_change()
+    start = pd.Timestamp(cfg["etf_start"])
+    ret = pd.concat([idx_ret[idx_ret.index < start], etf_ret[etf_ret.index >= start]])
+    rf = (irx["Close"].astype(float) / 100 / TRADING_DAYS).reindex(ret.index).ffill().fillna(0.0)
+    return etf_close, ret, rf
+
+
+def make_features(ret: pd.Series) -> pd.DataFrame:
+    feats = {}
+    ret_neg = np.minimum(ret, 0.0)
+    for hl in HALFLIVES:
+        mean = ret.ewm(halflife=hl).mean()
+        dd = np.sqrt(pd.Series(ret_neg, index=ret.index).pow(2).ewm(halflife=hl).mean())
+        feats[f"ret_{hl}"] = mean
+        feats[f"logdd_{hl}"] = np.log(dd)
+        feats[f"sortino_{hl}"] = mean.div(dd)
+    X = pd.DataFrame(feats)
+    return X.replace([np.inf, -np.inf], np.nan).dropna()
+
+
+def strategy_sharpe(ret, rf, states):
+    pos = (states == 0).astype(float).shift(2)
+    pos = pos.reindex(ret.index).ffill().fillna(0.0)
+    strat = pos * ret + (1 - pos) * rf - pos.diff().abs().fillna(0.0) * COST_BPS / 1e4
+    excess = strat - rf
+    sd = excess.std()
+    if sd == 0 or np.isnan(sd):
+        return -np.inf
+    return excess.mean() / sd * np.sqrt(TRADING_DAYS)
+
+
+def eval_lambda(lam, Xf, Xv, val_mask, ret_fit, ret_val, rf_val):
+    jm = JumpModel(n_components=2, jump_penalty=lam, cont=False)
+    jm.fit(Xf, ret_ser=ret_fit, sort_by="cumret")
+    states_val = pd.Series(jm.predict_online(Xv), index=Xv.index)[val_mask]
+    return lam, strategy_sharpe(ret_val, rf_val, states_val)
+
+
+def yearly(X, ret, rf, year):
+    train_end = pd.Timestamp(f"{year - 1}-12-31")
+    test_end = pd.Timestamp(f"{year}-12-31")
+    X_train = X.loc[:train_end]
+    val_start = pd.Timestamp(f"{year - 1 - VAL_YEARS}-12-31")
+    X_fit = X_train.loc[:val_start]
+    val_mask = (X_train.index > val_start)
+    scale = StandardScalerPD()
+    Xf = scale.fit_transform(X_fit)
+    Xv = scale.transform(X_train)
+    results = Parallel(n_jobs=-1)(
+        delayed(eval_lambda)(lam, Xf, Xv, val_mask, ret.reindex(X_fit.index),
+                             ret.reindex(X_train.index[val_mask]), rf.reindex(X_train.index[val_mask]))
+        for lam in LAMBDA_GRID)
+    lam, _ = max(results, key=lambda r: r[1])
+    scaler = StandardScalerPD()
+    Xt = scaler.fit_transform(X_train)
+    jm = JumpModel(n_components=2, jump_penalty=lam, cont=False)
+    jm.fit(Xt, ret_ser=ret.reindex(X_train.index), sort_by="cumret")
+    Xs = scaler.transform(X.loc[:test_end])
+    states = pd.Series(jm.predict_online(Xs), index=Xs.index)
+    c = np.asarray(jm.centers_)
+    d = ((Xs.values[:, None, :] - c[None, :, :]) ** 2).sum(axis=2)
+    p_bear = pd.Series(d[:, 0] / (d[:, 0] + d[:, 1] + 1e-12), index=Xs.index)
+    return states, lam, p_bear
+
+
+def confirm_v6(states, p_bear):
+    s, p = states.values, p_bear.values
+    out = s.copy()
+    last_flip = -10**9
+    for i in range(1, len(s)):
+        n = N_BEAR if s[i] == 1 else N_BULL
+        persist = all(s[i - j] == s[i] for j in range(min(n, i + 1)))
+        if persist and s[i] != out[i - 1]:
+            if i - last_flip < DWELL:
+                persist = False
+            elif s[i] == 1:
+                persist = p[i] >= TB
+        out[i] = s[i] if persist else out[i - 1]
+        if out[i] != out[i - 1]:
+            last_flip = i
+    return pd.Series(out, index=states.index)
+
+
+def build_market(market):
+    cfg = SYMBOLS[market]
+    close, ret, rf = load_data(cfg)
+    v0 = VOL_START.get(market)
+    if v0:
+        close, ret, rf = close.loc[v0:], ret.loc[v0:], rf.loc[v0:]
+
+    raw = pd.read_csv(os.path.join(DATA_DIR, cfg["index"]), index_col=0, parse_dates=True)
+    volume = raw["Volume"].astype(float).reindex(ret.index)
+    close_full = raw["Close"].astype(float)
+    h, l = (raw["High"].astype(float).reindex(ret.index),
+            raw["Low"].astype(float).reindex(ret.index))
+
+    X1 = make_features(ret)
+    up_vol = volume.where(ret > 0, 0.0)
+    recov = {}
+    for hl in (5, 21):
+        recov[f"vm{hl}"] = (up_vol.ewm(halflife=hl).mean() / volume.ewm(halflife=hl).mean() - 0.5)
+    recov["ma200"] = np.log(close_full / close_full.rolling(200).mean())
+    recov = pd.DataFrame(recov).reindex(X1.index)
+    c = close_full.reindex(ret.index)
+    clv_daily = ((c - l) / (h - l) - 0.5).fillna(0.0)
+    clv_feats = pd.DataFrame({f"clv_{hl}": clv_daily.ewm(halflife=hl).mean() for hl in (5, 21)})
+    base = X1.join(recov.add_prefix("raw_")).join(clv_feats).dropna()
+    X1 = X1.loc[base.index]
+    idx = X1.index
+
+    first_test = cfg["first_test"]
+    state_out = pd.Series(index=idx, dtype=float)
+    lam_out = pd.Series(index=idx, dtype=float)
+    pbear_out = pd.Series(index=idx, dtype=float)
+
+    for year in range(first_test, idx[-1].year + 1):
+        test_end = pd.Timestamp(f"{year}-12-31")
+        train_end = pd.Timestamp(f"{year - 1}-12-31")
+        if X1.loc[str(year)].empty:
+            continue
+        s1, lam1, _ = yearly(X1, ret, rf, year)
+        mask = (s1.shift(1) == 1).reindex(idx).fillna(False)
+        X2 = X1.copy()
+        for col in ("vm5", "vm21", "ma200"):
+            X2[col] = base[f"raw_{col}"].where(mask, 0.0)
+        for col in ("clv_5", "clv_21"):
+            X2[col] = base[col]
+        s2, lam2, pb2 = yearly(X2, ret, rf, year)
+        tm = (s2.index > train_end) & (s2.index <= test_end)
+        state_out.loc[s2.index[tm]] = s2[tm]
+        lam_out.loc[s2.index[tm]] = lam2
+        pbear_out.loc[s2.index[tm]] = pb2[tm]
+        print(f"{market} {year}: lam1={lam1:>4.0f} lam2={lam2:>4.0f}  "
+              f"bear_days={int((s2[tm] == 1).sum())}/{int(tm.sum())}", flush=True)
+
+    raw_states = state_out.dropna()
+    p_bear_full = pbear_out.reindex(raw_states.index)
+    published = confirm_v6(raw_states, p_bear_full)
+
+    pd.DataFrame({"close": close.reindex(raw_states.index),
+                  "ret": ret.reindex(raw_states.index),
+                  "rf": rf.reindex(raw_states.index),
+                  "state": published,
+                  "lam": lam_out.reindex(raw_states.index),
+                  "p_bear": p_bear_full}
+                 ).to_csv(os.path.join(RESULTS_DIR, f"regimes_{market}_V6.csv"))
+    print(f"{market}: regimes_{market}_V6.csv written, {len(raw_states)} rows, "
+          f"published flips {int(published.diff().abs().sum())}")
+
+
+def main():
+    markets = [m.upper() for m in sys.argv[1:]] or list(SYMBOLS)
+    for m in markets:
+        build_market(m)
+
+
+if __name__ == "__main__":
+    main()

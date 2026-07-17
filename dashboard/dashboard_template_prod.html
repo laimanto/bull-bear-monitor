@@ -1,0 +1,906 @@
+<title>Bull Bear Monitor</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --border: #e2e5ea;
+    --text: #1a2233; --muted: #64708a;
+    --accent: #2563eb; --accent-soft: rgba(37, 99, 235, 0.10);
+    --grid: rgba(100, 112, 138, 0.16);
+    --up: #157f3d; --down: #c92a2a; --amber: #b45309;
+    --up-soft: rgba(21, 127, 61, 0.12); --down-soft: rgba(201, 42, 42, 0.10);
+    --out-soft: rgba(100, 112, 138, 0.16);
+    --tab-hover: #eceef2; --tooltip-bg: rgba(255, 255, 255, 0.97);
+    --flash: rgba(37, 99, 235, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --card: #1a1f29; --border: #2a3140;
+      --text: #e6eaf2; --muted: #8b96ab;
+      --accent: #5b93f5; --accent-soft: rgba(91, 147, 245, 0.14);
+      --grid: rgba(139, 150, 171, 0.14);
+      --up: #34c268; --down: #f26d6d; --amber: #f0ad4e;
+      --up-soft: rgba(52, 194, 104, 0.14); --down-soft: rgba(242, 109, 109, 0.12);
+      --out-soft: rgba(139, 150, 171, 0.18);
+      --tab-hover: #232a37; --tooltip-bg: rgba(26, 31, 41, 0.97);
+      --flash: rgba(91, 147, 245, 0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151c; --card: #1a1f29; --border: #2a3140;
+    --text: #e6eaf2; --muted: #8b96ab;
+    --accent: #5b93f5; --accent-soft: rgba(91, 147, 245, 0.14);
+    --grid: rgba(139, 150, 171, 0.14);
+    --up: #34c268; --down: #f26d6d; --amber: #f0ad4e;
+    --up-soft: rgba(52, 194, 104, 0.14); --down-soft: rgba(242, 109, 109, 0.12);
+    --out-soft: rgba(139, 150, 171, 0.18);
+    --tab-hover: #232a37; --tooltip-bg: rgba(26, 31, 41, 0.97);
+    --flash: rgba(91, 147, 245, 0.25);
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --card: #ffffff; --border: #e2e5ea;
+    --text: #1a2233; --muted: #64708a;
+    --accent: #2563eb; --accent-soft: rgba(37, 99, 235, 0.10);
+    --grid: rgba(100, 112, 138, 0.16);
+    --up: #157f3d; --down: #c92a2a; --amber: #b45309;
+    --up-soft: rgba(21, 127, 61, 0.12); --down-soft: rgba(201, 42, 42, 0.10);
+    --out-soft: rgba(100, 112, 138, 0.16);
+    --tab-hover: #eceef2; --tooltip-bg: rgba(255, 255, 255, 0.97);
+    --flash: rgba(37, 99, 235, 0.18);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+    padding: 20px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .stamp { color: var(--muted); font-size: 11px; text-align: right; line-height: 1.55; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  h1 { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+  h1 .ver { color: var(--muted); font-weight: 600; font-size: 13px; margin-left: 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 4px 0 18px; }
+  .sub b { color: var(--text); font-weight: 600; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .tab {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    font: 600 13px/1 inherit; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .tab:hover { background: var(--tab-hover); color: var(--text); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab .pip { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .pip.in { background: var(--up); } .pip.outp { background: var(--down); }
+  .tab.active .pip.in { background: #b3f0c8; } .tab.active .pip.outp { background: #ffc2c2; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .caveat { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .lbl { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tile .val { font-size: 21px; font-weight: 650; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .tile .note { color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.45; }
+  .tiles.onerow { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  .onerow .tile { padding: 8px 10px; }
+  .onerow .tile .val { font-size: 15px; }
+  .onerow .tile .lbl { font-size: 9.5px; }
+  .onerow .tile .note { font-size: 10px; }
+  .wraptbl td { white-space: normal; }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; font-weight: 650; margin-bottom: 10px; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 13px; color: var(--muted); font-size: 12px; align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .tri { width: 0; height: 0; display: inline-block; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid var(--down); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--up); display: inline-block; }
+  .bandsw { width: 14px; height: 10px; display: inline-block; border-radius: 2px; }
+  .rangebtns { display: flex; gap: 4px; flex-wrap: wrap; }
+  .rangebtns button {
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer; font: 600 12px/1 inherit; font-family: inherit;
+  }
+  .rangebtns button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chart-box { position: relative; width: 100%; height: 460px; }
+  .chart-box canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; z-index: 5;
+    background: var(--tooltip-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 11px; font-size: 12px; line-height: 1.6; white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12); font-variant-numeric: tabular-nums;
+  }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
+  .tblwrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--border); font-size: 12.5px; white-space: nowrap; }
+  th { color: var(--muted); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
+  th.l, td.l { text-align: left; }
+  th.grp { text-align: center; border-left: 1px solid var(--border); }
+  td.grpl, th.grpl { border-left: 1px solid var(--border); }
+  tbody tr:hover { background: var(--accent-soft); }
+  tfoot td { color: var(--muted); font-size: 11.5px; white-space: normal; line-height: 1.55; border-bottom: none; padding-top: 10px; }
+  .rdg { color: var(--muted); font-size: 11px; margin-top: 1px; }
+  .chip {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 650;
+  }
+  .chip.inchip { background: var(--up-soft); color: var(--up); }
+  .chip.outchip { background: var(--down-soft); color: var(--down); }
+  .chip.win { background: var(--up-soft); color: var(--up); }
+  .chip.loss { background: var(--down-soft); color: var(--down); }
+  .chip.open { background: var(--accent-soft); color: var(--accent); }
+  tr.flash { animation: rowflash 1.6s ease-out; }
+  @keyframes rowflash { 0% { background: var(--flash); } 100% { background: transparent; } }
+  .roibars { display: flex; align-items: flex-end; gap: 3px; height: 170px; padding: 4px 2px 0; overflow-x: auto; }
+  .roibar { flex: 1 0 10px; max-width: 34px; position: relative; height: 100%; cursor: pointer; }
+  .roibar .col { position: absolute; left: 15%; right: 15%; border-radius: 3px 3px 0 0; }
+  .roibar:hover .col { filter: brightness(1.2); }
+  .roibaraxis { border-top: 1px solid var(--border); margin-top: 0; padding-top: 5px; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+  @media (max-width: 720px) { .chart-box { height: 380px; } body { padding: 12px; } }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Bull Bear Monitor</h1>
+    <div class="stamp" id="stamp"></div>
+  </div>
+  <div class="sub" id="sub"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="panels"></div>
+</div>
+
+<script>
+const DATA = __PAYLOAD_JSON__;
+const HISTORY = __HISTORY_JSON__;
+const KEYS = Object.keys(DATA);
+
+// ---------- helpers ----------
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 2) => x == null ? "–" : x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (x, d = 1) => x == null ? "–" : (x >= 0 ? "+" : "") + (100 * x).toFixed(d) + "%";
+const pctu = (x, d = 1) => x == null ? "–" : (100 * x).toFixed(d) + "%";
+const money = x => "$" + Math.round(x).toLocaleString("en-US");
+const mult = x => x == null ? "–" : x.toFixed(2) + "×";
+const cls = x => x >= 0 ? "pos" : "neg";
+const dShort = s => { const d = new Date(s + "T00:00:00"); return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); };
+
+// ---------- header ----------
+const first = DATA[KEYS.find(k => !DATA[k].ref_only)];
+const tagOf = r => "JM_" + (r.variant ?? "BL");
+// The tile always displays P(flip AWAY from the displayed signal): p_bear is
+// the raw bear-proximity (0% = bull centroid, 100% = bear centroid), so while
+// the displayed signal is BULL the flip-to-bear chance IS p_bear, but while
+// it is BEAR the flip-to-bull chance is 100−p_bear. Displaying raw p_bear in
+// bear states was a real bug (GOLD, deep in bear at p_bear 73%, showed "Flip
+// to Bull 73% GREEN" when the honest reading is 27% RED - stuck in bear).
+const flipPct = (stateIsBull, pBear) =>
+  pBear == null ? null : (stateIsBull ? pBear : 1 - pBear);
+function flipZone(currentState, pBear) {
+  if (pBear == null) return null;
+  const isBull = currentState === "bull";
+  const pct = flipPct(isBull, pBear);
+  if (isBull) {  // displayed % = chance of flipping to bear: high = bad
+    return pct <= 0.4 ? { name: "GREEN", color: "var(--up)", pct }
+      : pct <= 0.7 ? { name: "AMBER", color: "var(--amber)", pct }
+      : { name: "RED", color: "var(--down)", pct };
+  }
+  // displayed % = chance of flipping back to bull: high = good
+  return pct <= 0.4 ? { name: "RED", color: "var(--down)", pct }
+    : pct <= 0.7 ? { name: "AMBER", color: "var(--amber)", pct }
+    : { name: "GREEN", color: "var(--up)", pct };
+}
+{
+  const builtAt = new Date("__BUILT_AT_ISO__");
+  const fmtTz = (tz, label) => builtAt.toLocaleString("en-US",
+    { timeZone: tz, year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit", hour12: false }) + ` ${label}`;
+  document.getElementById("stamp").innerHTML =
+    `Updated ${fmtTz("America/Toronto", "Toronto")}<br>
+     ${fmtTz("Asia/Hong_Kong", "HK")}<br>Data through ${dShort(first.end)}`;
+}
+document.getElementById("sub").innerHTML =
+  `Daily <b>bull / bear</b> market signal — fully invested in BULL, 3-month T-bills in BEAR.
+  First dot: green = in the market, red = out. Second dot: flip-risk traffic light (green/amber/red).
+  How the signal is made: see the <b>Model</b> tab.`;
+
+// ---------- tabs ----------
+const tabsEl = document.getElementById("tabs");
+const panelsEl = document.getElementById("panels");
+const charts = {};
+function addTab(id, label, outFlag, flipColor) {
+  const b = document.createElement("button");
+  b.className = "tab"; b.dataset.target = id;
+  const pip1 = outFlag == null ? "" : `<span class="pip ${outFlag ? "outp" : "in"}"></span>`;
+  const pip2 = flipColor ? `<span class="pip" style="background:${flipColor}"></span>` : "";
+  b.innerHTML = pip1 + pip2 + label;
+  b.onclick = () => activate(id);
+  tabsEl.appendChild(b);
+}
+const modelCardsBySuffix = {};
+// Why a market's training starts later than its price history: Yahoo's
+// volume data has a hard gap (all-zero) before these markets' cutover dates,
+// or the instrument simply didn't exist earlier. The authoritative training
+// start itself comes from each payload's train_start (computed server-side
+// in backtest.py), not from this note table.
+const TRAIN_NOTE = {
+  HSI: " (volume data clean from here)", HSCEI: " (volume data clean from here)",
+  NIKKEI: " (volume data clean from here)", FTSE: " (volume data clean from here)",
+  GOLD: " (COMEX futures data start)", ARKQ: " (ETF inception)",
+};
+// NDQ reference for the Era Performance card: prefer the production (non-BL)
+// NDX payload whatever its variant - hardcoding a variant here (it once said
+// V3) silently dropped the benchmark row on every later rollout.
+const ndxRef = Object.values(DATA).find(d => d.symbol === "NDX" && d.variant !== "BL")
+  ?? Object.values(DATA).find(d => d.symbol === "NDX");
+function ndxStatsOver(startStr, endStr) {
+  if (!ndxRef) return null;
+  const dates = ndxRef.dates;
+  const i = dates.findIndex(d => d >= startStr);
+  if (i < 0) return null;
+  let j = -1;
+  for (let x = dates.length - 1; x >= i; x--) { if (dates[x] <= endStr) { j = x; break; } }
+  if (j <= i) return null;
+  const es = ndxRef.eq_strat, eb = ndxRef.eq_bh;
+  const capB = eb[j] / eb[i], capS = es[j] / es[i];
+  const yrs = (j - i) / 252;
+  let peak = es[i], mdd = 0;
+  for (let x = i; x <= j; x++) { if (es[x] > peak) peak = es[x]; const dd = es[x] / peak - 1; if (dd < mdd) mdd = dd; }
+  return { capture: capB > 0 ? capS / capB : null, cagr: yrs > 0 ? Math.pow(capS, 1 / yrs) - 1 : null, mdd };
+}
+function activate(id) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.target === id));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + id));
+  if (charts[id]) charts[id].draw();
+}
+
+function flashRow(k, i) {
+  const row = document.getElementById(`trrow-${k}-${i}`);
+  if (!row) return;
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  row.classList.remove("flash"); void row.offsetWidth; row.classList.add("flash");
+}
+
+// ---------- panel builder ----------
+function buildPanel(k, r) {
+  const N = r.dates.length, LAST = N - 1;
+  const U = r.unit ?? "$";
+  const inMkt = r.current_pos === "in";
+  const TAG = tagOf(r), SUFFIX = r.variant ?? "BL";
+  const sig = r.signal ?? {};
+  const zone = flipZone(r.current_state, sig.p_bear);
+  addTab(k, SUFFIX === "BL" ? `${r.symbol}_${SUFFIX}` : r.symbol, !inMkt, zone ? zone.color : null);
+  const dataStart = (r.train_start ? dShort(r.train_start) : dShort(r.start)) + (TRAIN_NOTE[r.symbol] ?? "");
+  const p = document.createElement("div");
+  p.className = "panel"; p.id = "panel-" + k;
+
+  let sinceIdx = LAST;
+  while (sinceIdx > 0 && r.state[sinceIdx - 1] === r.state[LAST]) sinceIdx--;
+  const pf = r.panels.full, edge = (1 + pf.strat.total) / (1 + pf.bh.total);
+
+  // --- choppy-market note: the published signal itself flipped often
+  // recently. Pure display - computed from the already-published state
+  // array, no decode/payload change. Trigger: >=3 flips in the last 40
+  // published trading days (~2 months); under v6's 8-day minimum hold that
+  // means the market has been running close to the floor, not a one-off.
+  const CHOP_WINDOW = 40, CHOP_MIN_FLIPS = 3;
+  const chopStart = Math.max(1, LAST - CHOP_WINDOW + 1);
+  let chopFlips = 0;
+  for (let i = chopStart; i <= LAST; i++) if (r.state[i] !== r.state[i - 1]) chopFlips++;
+  const isChoppy = chopFlips >= CHOP_MIN_FLIPS;
+  const chopBanner = isChoppy
+    ? `<div style="margin-top:12px; padding:10px 14px; border-radius:8px; font-weight:650; font-size:13px;
+        color:var(--amber); background:color-mix(in srgb, var(--amber) 14%, transparent)">
+        ⚡ Choppy market — the signal has flipped ${chopFlips} times in the last ${CHOP_WINDOW} trading days.
+        Treat the current call as lower-conviction than usual.</div>`
+    : "";
+
+  // --- Signal section: signal, flip risk, prices, current trade
+  // Historical note values are converted with the DISPLAYED state at each
+  // historical date (state array index LAST-5 / LAST-10 matches the payload's
+  // p_bear_1w = iloc[-6] / p_bear_2w = iloc[-11] convention).
+  const flip1w = flipPct(r.state[Math.max(LAST - 5, 0)] === 0, sig.p_bear_1w);
+  const flip2w = flipPct(r.state[Math.max(LAST - 10, 0)] === 0, sig.p_bear_2w);
+  const flipTile = `<div class="tile"><div class="lbl">Flip to ${r.current_state === "bull" ? "Bear" : "Bull"}</div>
+    <div class="val" ${zone ? `style="color:${zone.color}"` : ""}>${zone ? `${zone.name} · ${pctu(zone.pct, 0)}` : "–"}</div>
+    <div class="note">1&thinsp;wk ago ${pctu(flip1w, 0)} · 2&thinsp;wk ago ${pctu(flip2w, 0)}</div></div>`;
+
+  const t0 = sig.trade ?? {};
+  const inTrade = t0.status === "in";
+  const tradeTiles = inTrade
+    ? `<div class="tile"><div class="lbl">Entry price</div>
+        <div class="val">${U}${fmt(t0.entry_price)}</div>
+        <div class="note">bought ${dShort(t0.entry)} · ${t0.days}&thinsp;trading days ago</div></div>
+      <div class="tile"><div class="lbl">Last price</div><div class="val">${U}${fmt(r.last_close)}</div>
+        <div class="note">${dShort(r.end)}</div></div>
+      <div class="tile"><div class="lbl">Trade ROI</div>
+        <div class="val ${cls(t0.roi)}">${pct(t0.roi)}</div>
+        <div class="note">since entry, net of costs</div></div>
+      <div class="tile"><div class="lbl">Trade max DD</div>
+        <div class="val neg">${pct(t0.max_dd)}</div>
+        <div class="note">worst dip since entry</div></div>
+      <div class="tile"><div class="lbl">Off peak</div>
+        <div class="val ${cls(t0.off_peak)}">${pct(t0.off_peak)}</div>
+        <div class="note">vs the trade's highest close</div></div>`
+    : `<div class="tile"><div class="lbl">Exit price</div>
+        <div class="val">${U}${fmt(t0.exit_price)}</div>
+        <div class="note">sold ${t0.exit ? dShort(t0.exit) : "–"} · ${t0.days ?? "–"}&thinsp;trading days ago</div></div>
+      <div class="tile"><div class="lbl">Last price</div><div class="val">${U}${fmt(r.last_close)}</div>
+        <div class="note">${dShort(r.end)}</div></div>
+      <div class="tile"><div class="lbl">Last trade ROI</div>
+        <div class="val ${cls(t0.roi)}">${pct(t0.roi)}</div>
+        <div class="note">that closed trade, net of costs</div></div>
+      <div class="tile"><div class="lbl">Trade max DD</div>
+        <div class="val neg">${pct(t0.max_dd)}</div>
+        <div class="note">worst dip during that trade</div></div>
+      <div class="tile"><div class="lbl">Off peak</div>
+        <div class="val ${cls(t0.off_peak)}">${pct(t0.off_peak)}</div>
+        <div class="note">at exit, vs that trade's highest close</div></div>`;
+
+  const tiles = `<div class="card"><h2>Signal</h2><div class="tiles onerow" style="margin-bottom:0">
+    <div class="tile"><div class="lbl">Signal</div>
+      <div class="val ${r.current_state === "bull" ? "pos" : "neg"}">${r.current_state.toUpperCase()}</div>
+      <div class="note">since ${dShort(r.dates[sinceIdx])} · ${sig.regime_age ?? LAST - sinceIdx + 1}&thinsp;trading days</div></div>
+    ${flipTile}
+    ${tradeTiles}
+  </div>
+  ${chopBanner}</div>`;
+
+  // --- era performance (full period first)
+  let eraRows = "";
+  for (const key of ["full", "era1", "era2", "era3"]) {
+    const e = r.panels[key];
+    if (!e) continue;  // era predates this symbol's own test window
+    const cap = (1 + e.strat.total) / (1 + e.bh.total);
+    eraRows += `<tr><td class="l" rowspan="2" style="font-weight:650">${e.label}<div class="rdg">${e.start} → ${e.end} · ${pctu(e.time_in_mkt, 0)} in market</div></td>
+      <td class="l">${TAG}</td>
+      <td class="${cls(e.strat.cagr)}" style="font-weight:650">${pct(e.strat.cagr)}</td><td>${pctu(e.strat.vol)}</td>
+      <td style="font-weight:650">${fmt(e.strat.sharpe)}</td><td>${fmt(e.strat.sortino)}</td>
+      <td class="neg" style="font-weight:650">${pct(e.strat.mdd)}</td><td class="${cls(e.strat.total)}">${pct(e.strat.total, 0)}</td>
+      <td style="font-weight:650">${mult(cap)}</td>
+      <td rowspan="2" style="font-weight:650">${e.n_trades ?? "–"}</td></tr>
+    <tr><td class="l" style="color:var(--muted)">Buy &amp; hold</td>
+      <td class="${cls(e.bh.cagr)}">${pct(e.bh.cagr)}</td><td>${pctu(e.bh.vol)}</td>
+      <td>${fmt(e.bh.sharpe)}</td><td>${fmt(e.bh.sortino)}</td>
+      <td class="neg">${pct(e.bh.mdd)}</td><td class="${cls(e.bh.total)}">${pct(e.bh.total, 0)}</td><td></td></tr>`;
+    if (key === "full" && r.symbol !== "NDX") {
+      const ns = ndxStatsOver(e.start, e.end);
+      if (ns != null) {
+        eraRows += `<tr><td class="l" style="color:var(--muted); font-style:italic">NDQ (same period, reference)</td>
+          <td class="l" style="color:var(--muted)">benchmark</td>
+          <td style="color:var(--muted)">${pct(ns.cagr)}</td><td>–</td><td>–</td><td>–</td>
+          <td class="neg" style="color:var(--muted)">${pct(ns.mdd)}</td><td>–</td>
+          <td style="color:var(--muted)">${mult(ns.capture)}</td><td>–</td></tr>`;
+      }
+    }
+  }
+  const eraCard = `<div class="card"><h2>Era Performance</h2><div class="tblwrap">
+    <table><thead><tr>
+      <th class="l">Era</th><th class="l"></th><th>Avg yearly return</th><th>Volatility</th><th>Sharpe</th><th>Sortino</th>
+      <th>Max drop</th><th>Total ROI</th><th>vs B&amp;H</th><th>Trades</th>
+    </tr></thead><tbody>${eraRows}</tbody>
+    <tfoot><tr><td colspan="10" class="l">
+      Net of 10&thinsp;bps switch costs, 1-day execution delay; cash earns 3-month T-bills while out.
+      <b>vs B&amp;H</b> = final wealth ÷ buy-and-hold's final wealth.
+    </td></tr></tfoot></table></div></div>`;
+
+  // --- chart card
+  const chartCard = `<div class="card">
+    <h2>${r.symbol} — price, signals and growth</h2>
+    <div class="chart-head">
+      <div class="legend">
+        <span><span class="sw" style="background:var(--accent)"></span>${r.symbol} close (log)</span>
+        <span><span class="dot"></span>Buy</span>
+        <span><span class="tri"></span>Sell</span>
+        <span><span class="bandsw" style="background:var(--out-soft)"></span>Out of market</span>
+        <span><span class="bandsw" style="background:var(--down-soft)"></span>Crisis window</span>
+        <span><span class="sw" style="background:var(--accent)"></span>${TAG} growth (×)</span>
+        <span><span class="sw" style="background:var(--muted); opacity:.75"></span>Buy &amp; hold growth (×)</span>
+      </div>
+      <div class="rangebtns" id="rb-${k}">
+        <button data-r="all" class="on">All</button><button data-r="pre">Pre-2009</button>
+        <button data-r="fed">2010–2021</button><button data-r="infl">2022–now</button>
+        <button data-r="5y">5Y</button><button data-r="1y">1Y</button>
+      </div>
+    </div>
+    <div class="chart-box"><canvas id="cv-${k}"></canvas><div class="tooltip" id="tt-${k}"></div></div>
+    <div class="hint">Red bands = the crises from the table above; grey bands = days out of the market —
+      their overlap shows how much of each crisis was sidestepped.
+      <b>Scroll to zoom · drag to pan · double-click to reset</b> · click a ●/▲ marker for its trade-log row.</div>
+  </div>`;
+
+  // --- per-trade ROI bars
+  const t = r.trades;
+  const maxAbs = Math.max(...t.map(x => Math.abs(x.roi)), 0.01);
+  let bars = "";
+  t.forEach((tr, i) => {
+    const h = Math.abs(tr.roi) / maxAbs * 50;
+    const up = tr.roi >= 0;
+    bars += `<div class="roibar" data-i="${i}" title="Trade ${i + 1}: ${tr.buy_date} → ${tr.open ? "open" : tr.sell_date} · ROI ${pct(tr.roi)}">
+      <div class="col" style="background:${up ? "var(--up)" : "var(--down)"};
+        ${up ? `bottom:50%; height:${h}%` : `top:50%; height:${h}%; border-radius:0 0 3px 3px`}"></div>
+    </div>`;
+  });
+  const wins = t.filter(x => x.roi > 0).length;
+  const roiCard = `<div class="card"><h2>Trade ROI History</h2>
+    <div class="roibars" id="roibars-${k}">${bars}</div>
+    <div class="roibaraxis"><span>trade #1 · ${dShort(t[0].buy_date)}</span>
+      <span>${wins}/${t.length} trades positive · scaled to largest |ROI| = ${pct(maxAbs)}</span>
+      <span>#${t.length} · ${dShort(t[t.length - 1].buy_date)}</span></div>
+    <div class="hint">One bar per round trip, net of costs — hover for dates, click for its trade-log row.</div></div>`;
+
+  // --- trade log
+  const tradeEnd = tr => tr.open ? r.end : tr.sell_date;
+  const inCrisis = tr => r.crises.filter(cr => tr.buy_date <= cr.end && tradeEnd(tr) >= cr.start);
+  let logRows = "";
+  t.forEach((tr, i) => {
+    const cnames = inCrisis(tr).map(c => c.name).join(", ");
+    logRows += `<tr id="trrow-${k}-${i}">
+      <td>${i + 1}</td>
+      <td class="l">${tr.buy_date}</td><td>${U}${fmt(tr.buy_price)}</td>
+      <td class="l">${tr.open ? "<b>still in</b>" : tr.sell_date}</td><td>${U}${fmt(tr.sell_price)}</td>
+      <td>${tr.days}</td>
+      <td class="${cls(tr.roi)}" style="font-weight:650">${pct(tr.roi)}</td>
+      <td class="${tr.out_move == null ? "" : cls(tr.out_move)}">${tr.out_move == null ? "–" : pct(tr.out_move)}</td>
+      <td class="l" style="color:${cnames ? "var(--down)" : "var(--muted)"}">${cnames || "–"}</td>
+    </tr>`;
+  });
+  const logCard = `<div class="card"><h2>Trade Log</h2><div class="tblwrap">
+    <table><thead><tr>
+      <th>#</th><th class="l">Buy (close)</th><th>Buy price</th><th class="l">Sell (close)</th><th>Sell price</th>
+      <th>Days held</th><th>Trade ROI</th><th>${r.symbol} while out</th><th class="l">Crisis</th>
+    </tr></thead><tbody>${logRows}</tbody>
+    <tfoot><tr><td colspan="9" class="l">
+      One round trip per row, ROI net of costs. <b>${r.symbol} while out</b> = the index's move between this
+      sell and the next buy (negative = the exit sidestepped a fall). <b>Crisis</b> = the crisis window this
+      trade overlapped, if any. # matches the chart markers.
+    </td></tr></tfoot></table></div></div>`;
+
+  // --- crisis performance card
+  let crows = "";
+  for (const cr of r.crises) {
+    const ntr = r.trades.filter(tr => tr.buy_date <= cr.end && (tr.open ? r.end : tr.sell_date) >= cr.start).length;
+    crows += `<tr>
+      <td class="l" style="font-weight:650">${cr.name}</td>
+      <td class="l">${dShort(cr.peak)}</td><td class="l">${dShort(cr.trough)}</td>
+      <td class="neg">${pct(cr.bh)}</td>
+      <td class="${cls(cr.strat)}" style="font-weight:650">${pct(cr.strat)}</td>
+      <td>${cr.exit_lag_days == null ? "never exited" : cr.exit_lag_days + "&thinsp;td"}</td>
+      <td>${cr.reentry_lag_days == null ? "–" : cr.reentry_lag_days === 0 ? "in at trough" : cr.reentry_lag_days + "&thinsp;td"}</td>
+      <td>${pctu(cr.pct_out, 0)}</td>
+      <td>${ntr}</td>
+    </tr>`;
+  }
+  const crisisCard = `<div class="card"><h2>Crisis Performance</h2>
+    <div class="caveat"><b style="color:var(--text)">${r.full_name}</b>,
+      Jump Model ${SUFFIX === "BL" ? "baseline" : SUFFIX.toLowerCase()} · trained from <b>${dataStart}</b> ·
+      tested ${dShort(r.start)} → ${dShort(r.end)}${U === "" ? " · index points, dividends excluded on both legs" : ""}${inMkt ? "" : ` · <b style="color:var(--down)">currently OUT</b>`}</div>
+    <div class="tblwrap">
+    <table><thead><tr>
+      <th class="l">Crisis</th><th class="l">Peak</th><th class="l">Trough</th>
+      <th>B&amp;H</th><th>${TAG}</th><th>Exit delay</th><th>Re-entry delay</th><th>% of window out</th><th>Trades</th>
+    </tr></thead><tbody>${crows}</tbody>
+    <tfoot><tr><td colspan="9" class="l">
+      Peak → trough windows. <b>Exit delay</b> = trading days after the peak until the first day out;
+      <b>re-entry delay</b> = trading days after the trough until back in.
+      <b>% of window out</b> = share of the window spent in T-bills. <b>Trades</b> = round trips overlapping the window.
+      Peak/trough are this market's own worst peak-to-trough decline within the window (not necessarily its
+      global high/low) — a market that rallies net over a window can still show a real interior crash here.
+      ${r.symbol === "GOLD" ? `<br><b>Gold's crisis list is different from every other tab on this dashboard</b> —
+      gold often moves inversely to equities (a safe-haven hedge), so the equity crashes used elsewhere don't
+      describe its real bear markets. These rows are gold's own peak-to-trough drawdowns (≥12%), verified from
+      its own price history. The <b>2011–15 gold bear market</b> row only reflects its final ~2 years (2014
+      onward) — the model's own training window starts 2008 and testing starts 2014, so the crisis's true
+      early years (2011–2013, part of a −44% peak-to-trough move) are visible only in training, not in this
+      live-tested figure.` : ""}
+    </td></tr></tfoot></table></div></div>`;
+
+  // --- methodology card
+  const trainingCrisisText = (r.training_crises && r.training_crises.length)
+    ? r.training_crises.join(", ")
+    : "no major named crisis — a shorter or more recent history";
+  const flipRow = `<tr><td class="l" style="font-weight:650">Flip-risk signal — added</td>
+        <td class="l">
+        • Descriptive only — layered on top of the regime call, not part of the trading rule<br>
+        • The displayed % is always the chance of flipping <b>away from the shown signal</b><br>
+        • In <b>BULL</b> (flip-to-bear risk): <b style="color:var(--up)">GREEN</b> ≤40% · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--down)">RED</b> &gt;70%<br>
+        • In <b>BEAR</b> (flip-to-bull chance): <b style="color:var(--down)">RED</b> ≤40% (deep in bear) · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--up)">GREEN</b> &gt;70% (recovery near)<br>
+        • Shown as each tab's second dot and in the Signal tile</td></tr>`;
+  const vetoBullet = !["V5", "V6"].includes(SUFFIX) ? "" :
+        `<br>• <b>Conviction veto (v5)</b>: a bear flip also needs the model's own bear-probability ≥&thinsp;60% on the day it would publish — low-conviction bear alarms (historically false: the market averaged <b>+2.1%</b> over such skipped calls) are held back, retried daily, and still publish the moment conviction arrives (91% of genuine bear flips pass with zero delay)<br>
+        • Bull re-entries are deliberately NOT vetoed — at V-shaped bottoms the first rebound days are the most valuable of the cycle, and every re-entry filter tested paid 4–6% per episode there`;
+  const holdBullet = SUFFIX !== "V6" ? "" :
+        `<br>• <b>Minimum hold (v6)</b>: once the signal flips, it holds for at least <b>8 trading days</b> — a pending reversal is blocked, retried daily, and publishes the first day the hold expires if it still stands (delayed, never lost); if the pressure passes first, no flip appears at all<br>
+        • <b>Guarantee: no published signal ever reverses in under 8 trading days.</b> The flip-risk light keeps moving in real time during a hold, so a pending reversal shows as elevated risk on a stable signal`;
+  const refinedTag = { V5: ", refined v5", V6: ", refined v5–v6" }[SUFFIX] ?? "";
+  const confirmRow = !["V4", "V5", "V6"].includes(SUFFIX) ? "" : `<tr><td class="l" style="font-weight:650">Signal confirmation — added (v4${refinedTag})</td>
+        <td class="l">
+        • A flip to <b>bear</b> publishes after <b>2</b> consecutive bear days; a flip to <b>bull</b> after <b>3</b> consecutive bull days (exits confirm faster than re-entries)<br>
+        • Keeps 1–2-day whipsaw flips out of the published signal — users simply follow the signal shown, no waiting rules to apply<br>
+        • During an unconfirmed flip, the signal holds and the flip-risk % reads high — the pending call appears as elevated risk, not as a flip<br>
+        • Cost: genuine flips publish 1–2 days later (e.g. NDX COVID exit 17→19 trading days after the peak)${vetoBullet}${holdBullet}</td></tr>`;
+  const execRow = `<tr><td class="l" style="font-weight:650">Execution</td>
+        <td class="l">Signal at close of day t → trade at close of day t+1 → first return earned day t+2 ·
+        10&thinsp;bps per switch · cash earns 13-week T-bills while out.</td></tr>`;
+  const referenceRow = `<tr><td class="l" style="font-weight:650">Reference</td>
+        <td class="l">Shu, Yu &amp; Mulvey (2024) —
+        <a href="https://arxiv.org/abs/2402.05272" target="_blank" rel="noopener"
+           style="color:var(--accent)">arxiv.org/abs/2402.05272</a> — built on the authors'
+        <a href="https://github.com/Yizhan-Oliver-Shu/jump-models" target="_blank" rel="noopener"
+           style="color:var(--accent)"><code>jumpmodels</code></a> package.</td></tr>`;
+  const methodCard = SUFFIX === "BL" ? `<div class="card"><h2>Statistical Jump Model Baseline — factory default setting</h2>
+    <div class="tblwrap wraptbl"><table><tbody>
+      <tr><td class="l" style="font-weight:650">Data</td>
+        <td class="l">
+        • <b>Training:</b> ${dataStart} → ${dShort(r.start)} — covers ${trainingCrisisText}<br>
+        • <b>Testing:</b> ${dShort(r.start)} → ${dShort(r.end)}, entirely out-of-sample<br>
+        • All figures quoted in this Model tab are measured on <b>NDX</b></td></tr>
+      <tr><td class="l" style="font-weight:650">Walk-forward</td>
+        <td class="l">
+        • Refit each January on all data up to the previous 31&thinsp;Dec (expanding window)<br>
+        • The coming year is predicted online — day t's call uses only data through day t<br>
+        • No test-year information ever reaches training, scaling, or λ selection</td></tr>
+      <tr><td class="l" style="font-weight:650">States</td>
+        <td class="l">Two — bull / bear — clustered on the features below.</td></tr>
+      <tr><td class="l" style="font-weight:650">Features (9)</td>
+        <td class="l">Three families, each at 5 / 21 / 63-day halflives:<br>
+        • <b>Trend</b> — EWM average daily return<br>
+        • <b>Downside risk</b> — log EWM downside deviation (negative days only)<br>
+        • <b>Risk-adjusted</b> — Sortino ratio (trend ÷ downside deviation)</td></tr>
+      <tr><td class="l" style="font-weight:650">Preprocessing</td>
+        <td class="l">Features clipped at ±3σ, standardized on training-window statistics only — the paper's
+        factory default, no tuning.</td></tr>
+      <tr><td class="l" style="font-weight:650">Jump penalty λ</td>
+        <td class="l">Fixed cost per regime switch (larger λ = fewer, more persistent regimes), re-selected
+        every January on a 3-year validation window. Year-by-year values: see the experiment log.</td></tr>
+      ${execRow}
+      ${referenceRow}
+    </tbody></table></div></div>`
+    : `<div class="card"><h2>Statistical Jump Model ${SUFFIX.toLowerCase()} — changes vs the baseline</h2>
+    <div class="tblwrap wraptbl"><table><tbody>
+      <tr><td class="l" style="font-weight:650">Data / Walk-forward / States</td>
+        <td class="l">Mechanism unchanged.<br>
+        • <b>Training:</b> ${dataStart} → ${dShort(r.start)} — covers ${trainingCrisisText}<br>
+        • <b>Testing:</b> ${dShort(r.start)} → ${dShort(r.end)}<br>
+        • All gains quoted below are measured on <b>NDX</b></td></tr>
+      <tr><td class="l" style="font-weight:650">Original features (9)</td>
+        <td class="l">Unchanged.</td></tr>
+      <tr><td class="l" style="font-weight:650">Feature clip — removed</td>
+        <td class="l">
+        • Model-structure change: the baseline's ±3σ clip flattened exactly the crisis extremes that separate bull from bear<br>
+        • <b>Gain (NDX): capture 1.16× → 1.67×</b></td></tr>
+      <tr><td class="l" style="font-weight:650">Volume features — added (3)</td>
+        <td class="l">
+        • <b>VM5 / VM21</b>: up-volume-share deviation at 5/21-day halflives · <b>ma200</b>: log distance to the 200-day average<br>
+        • Bear-masked — read neutral 0 while yesterday's call was bull, live only in bear — so they shape the recovery boundary without disturbing crash entries<br>
+        • No hardcoded thresholds · <b>Gain (NDX): capture 1.67× → 2.69×</b></td></tr>
+      <tr><td class="l" style="font-weight:650">Intraday features — added (2)</td>
+        <td class="l">
+        • <b>CLV5 / CLV21</b>: EWM of (Close−Low)/(High−Low) − ½ at 5/21-day halflives, always live<br>
+        • Bounded in [−½, ½] — distribution can't drift across eras<br>
+        • <b>Gain (NDX): fixed the slowest crisis exit</b> — 2025 tariff-shock exit 34 → 8 trading days (capture 2.69× → 2.70×)</td></tr>
+      <tr><td class="l" style="font-weight:650">Jump penalty λ, Execution</td>
+        <td class="l">Unchanged mechanism. Year-by-year λ values: see the experiment log.</td></tr>
+      ${confirmRow}
+      ${flipRow}
+    </tbody></table></div></div>`;
+
+  p.innerHTML = `
+    ${tiles} ${crisisCard} ${eraCard} ${chartCard} ${roiCard} ${logCard}`;
+  // Model tab: one full specification card per unique variant (BL, V3) —
+  // every market/ticker running the same variant shares its card instead of
+  // repeating it once per tab. Rendered in fixed BL-then-V3 order regardless
+  // of which tab is processed first.
+  if (!(SUFFIX in modelCardsBySuffix)) {
+    modelCardsBySuffix[SUFFIX] = `<div class="caveat"><b style="color:var(--accent)">JM_${SUFFIX}</b> — model details</div>`
+      + methodCard;
+  }
+  panelsEl.appendChild(p);
+
+  p.querySelectorAll(".roibar").forEach(b => b.onclick = () => flashRow(k, +b.dataset.i));
+  charts[k] = makeChart(k, r);
+}
+
+// ---------- interactive chart ----------
+function makeChart(k, r) {
+  const N = r.dates.length, LAST = N - 1;
+  const U = r.unit ?? "$";
+  const cv = document.getElementById("cv-" + k), tt = document.getElementById("tt-" + k);
+  const ctx = cv.getContext("2d");
+  let R0 = 0, R1 = LAST;
+
+  const markers = [];
+  r.trades.forEach((t, ki) => {
+    const bi = r.dates.indexOf(t.buy_date);
+    if (bi >= 0) markers.push({ i: bi, type: "buy", k: ki });
+    if (!t.open && t.sell_date) {
+      const si = r.dates.indexOf(t.sell_date);
+      if (si >= 0) markers.push({ i: si, type: "sell", k: ki });
+    }
+  });
+  const bands = [];
+  {
+    let s = null;
+    for (let i = 0; i < N; i++) {
+      if (r.pos[i] === 0 && s === null) s = i;
+      if ((r.pos[i] === 1 || i === LAST) && s !== null) { bands.push([s, r.pos[i] === 1 ? i : LAST]); s = null; }
+    }
+  }
+  const idx2009 = r.dates.findIndex(d => d >= "2009-01-01");
+  const findDate = d => { const i = r.dates.findIndex(x => x >= d); return i < 0 ? LAST : i; };
+  const cbands = (r.crises || []).map(c => [findDate(c.start), findDate(c.end)]).filter(([a, b]) => b > a);
+
+  let hitMarkers = [], geo = null;
+
+  function layout() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = w * dpr; cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w, h };
+  }
+
+  function niceLogTicks(lo, hi) {
+    const ticks = [], bases = [1, 2, 5];
+    for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++)
+      for (const b of bases) { const v = b * 10 ** e; if (v >= lo && v <= hi) ticks.push(v); }
+    while (ticks.length > 6) for (let i = ticks.length - 2; i >= 0; i -= 2) ticks.splice(i, 1);
+    return ticks;
+  }
+
+  function draw() {
+    if (!cv.clientWidth) return; // hidden panel
+    const { w, h } = layout();
+    ctx.clearRect(0, 0, w, h);
+    const mL = 8, mR = 56, mT = 8, gap = 26;
+    const priceH = Math.round((h - mT - gap - 20) * 0.60);
+    const eqH = h - mT - priceH - gap - 20;
+    const pw = w - mL - mR;
+    const x = i => mL + pw * (i - R0) / Math.max(R1 - R0, 1);
+
+    let pLo = Infinity, pHi = -Infinity, eLo = Infinity, eHi = -Infinity;
+    for (let i = R0; i <= R1; i++) {
+      if (r.close[i] < pLo) pLo = r.close[i];
+      if (r.close[i] > pHi) pHi = r.close[i];
+      const a = Math.min(r.eq_strat[i], r.eq_bh[i]), b = Math.max(r.eq_strat[i], r.eq_bh[i]);
+      if (a < eLo) eLo = a;
+      if (b > eHi) eHi = b;
+    }
+    pLo *= 0.94; pHi *= 1.06; eLo *= 0.94; eHi *= 1.06;
+    const yP = v => mT + priceH * (1 - (Math.log(v) - Math.log(pLo)) / (Math.log(pHi) - Math.log(pLo)));
+    const yE = v => mT + priceH + gap + eqH * (1 - (Math.log(v) - Math.log(eLo)) / (Math.log(eHi) - Math.log(eLo)));
+
+    ctx.fillStyle = css("--down-soft");
+    for (const [a, b] of cbands) {
+      if (b < R0 || a > R1) continue;
+      const xa = x(Math.max(a, R0)), xb = x(Math.min(b, R1));
+      ctx.fillRect(xa, mT, Math.max(xb - xa, 1), priceH);
+      ctx.fillRect(xa, mT + priceH + gap, Math.max(xb - xa, 1), eqH);
+    }
+    ctx.fillStyle = css("--out-soft");
+    for (const [a, b] of bands) {
+      if (b < R0 || a > R1) continue;
+      const xa = x(Math.max(a, R0)), xb = x(Math.min(b, R1));
+      ctx.fillRect(xa, mT, Math.max(xb - xa, 1), priceH);
+      ctx.fillRect(xa, mT + priceH + gap, Math.max(xb - xa, 1), eqH);
+    }
+
+    ctx.font = "11px Segoe UI, system-ui, sans-serif";
+    ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--muted");
+    ctx.lineWidth = 1; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    for (const tk of niceLogTicks(pLo, pHi)) {
+      ctx.beginPath(); ctx.moveTo(mL, yP(tk)); ctx.lineTo(w - mR, yP(tk)); ctx.stroke();
+      ctx.fillText(U + (tk >= 1000 ? (tk / 1000) + "k" : tk), w - mR + 6, yP(tk));
+    }
+    for (const tk of niceLogTicks(eLo, eHi)) {
+      ctx.beginPath(); ctx.moveTo(mL, yE(tk)); ctx.lineTo(w - mR, yE(tk)); ctx.stroke();
+      ctx.fillText((tk / 1e4).toLocaleString("en-US") + "×", w - mR + 6, yE(tk));
+    }
+
+    // x labels (year boundaries present in the visible window)
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const y0 = +r.dates[R0].slice(0, 4), y1 = +r.dates[R1].slice(0, 4);
+    const step = Math.max(1, Math.ceil((y1 - y0 + 1) / Math.floor(pw / 55)));
+    let lastYr = +r.dates[R0].slice(0, 4) - 1;
+    for (let i = R0; i <= R1; i++) {
+      const yr = +r.dates[i].slice(0, 4);
+      if (yr > lastYr) {
+        if ((yr - y0) % step === 0 && i > R0 + 2) {
+          ctx.fillText(String(yr), x(i), h - 16);
+          ctx.strokeStyle = css("--grid");
+          ctx.beginPath(); ctx.moveTo(x(i), mT); ctx.lineTo(x(i), h - 20); ctx.stroke();
+        }
+        lastYr = yr;
+      }
+    }
+    // month labels when zoomed within ~2 years
+    if (R1 - R0 < 520) {
+      let lastMo = r.dates[R0].slice(0, 7);
+      for (let i = R0 + 1; i <= R1; i++) {
+        const mo = r.dates[i].slice(0, 7);
+        if (mo !== lastMo) {
+          const lab = new Date(r.dates[i] + "T00:00:00").toLocaleDateString("en-US", { month: "short" });
+          ctx.fillStyle = css("--muted");
+          ctx.fillText(lab, x(i), h - 16);
+          lastMo = mo;
+        }
+      }
+    }
+
+    if (idx2009 >= R0 && idx2009 <= R1) {
+      ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = css("--muted"); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x(idx2009), mT); ctx.lineTo(x(idx2009), h - 20); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = css("--muted"); ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.fillText("2009 split", x(idx2009) + 4, mT + 2);
+    }
+
+    function line(arr, yFn, color, width) {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+      let started = false;
+      const stride = Math.max(1, Math.floor((R1 - R0) / (pw * 2)));
+      for (let i = R0; i <= R1; i += stride) {
+        const xx = x(i), yy = yFn(arr[i]);
+        if (!started) { ctx.moveTo(xx, yy); started = true; } else ctx.lineTo(xx, yy);
+      }
+      ctx.stroke();
+    }
+    line(r.close, yP, css("--accent"), 1.4);
+    line(r.eq_bh, yE, css("--muted"), 1.2);
+    line(r.eq_strat, yE, css("--accent"), 1.6);
+
+    ctx.fillStyle = css("--muted"); ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.font = "600 11px Segoe UI, system-ui, sans-serif";
+    ctx.fillText(r.symbol + " CLOSE (LOG)", mL + 2, mT + 2);
+    ctx.fillText(`CUMULATIVE GROWTH (×) — ${tagOf(r)} vs BUY & HOLD (LOG)`, mL + 2, mT + priceH + gap + 2);
+
+    hitMarkers = [];
+    for (const m of markers) {
+      if (m.i < R0 || m.i > R1) continue;
+      const xx = x(m.i), yy = yP(r.close[m.i]);
+      if (m.type === "buy") {
+        ctx.fillStyle = css("--up");
+        ctx.beginPath(); ctx.arc(xx, yy + 11, 4.5, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = css("--down");
+        ctx.beginPath();
+        ctx.moveTo(xx, yy - 6); ctx.lineTo(xx - 4.5, yy - 14); ctx.lineTo(xx + 4.5, yy - 14);
+        ctx.closePath(); ctx.fill();
+      }
+      hitMarkers.push({ x: xx, y: m.type === "buy" ? yy + 11 : yy - 10, m });
+    }
+    if (R1 - R0 < 2600) {
+      ctx.fillStyle = css("--muted"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      ctx.font = "600 9px Segoe UI, system-ui, sans-serif";
+      for (const hm of hitMarkers) if (hm.m.type === "sell")
+        ctx.fillText(String(hm.m.k + 1), hm.x, hm.y - 8);
+    }
+    geo = { x, mL, mR, mT, w, h };
+  }
+
+  // --- range buttons
+  const rb = document.getElementById("rb-" + k);
+  function setBtn(rname) {
+    rb.querySelectorAll("button").forEach(o => o.classList.toggle("on", o.dataset.r === rname));
+  }
+  rb.querySelectorAll("button").forEach(b => {
+    b.onclick = () => {
+      setBtn(b.dataset.r);
+      const rr = b.dataset.r;
+      if (rr === "all") { R0 = 0; R1 = LAST; }
+      else if (rr === "pre") { R0 = 0; R1 = findDate("2010-01-01"); }
+      else if (rr === "fed") { R0 = findDate("2010-01-01"); R1 = findDate("2022-01-01"); }
+      else if (rr === "infl") { R0 = findDate("2022-01-01"); R1 = LAST; }
+      else if (rr === "5y") { R0 = Math.max(0, LAST - 5 * 252); R1 = LAST; }
+      else if (rr === "1y") { R0 = Math.max(0, LAST - 252); R1 = LAST; }
+      draw();
+    };
+  });
+
+  // --- zoom (wheel), pan (drag), reset (double-click)
+  cv.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    if (!geo) return;
+    const rect = cv.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const frac = Math.min(Math.max((mx - geo.mL) / (geo.w - geo.mL - geo.mR), 0), 1);
+    const center = R0 + frac * (R1 - R0);
+    const factor = ev.deltaY > 0 ? 1.18 : 1 / 1.18;
+    let span = Math.round((R1 - R0) * factor);
+    span = Math.min(Math.max(span, 25), N);
+    R0 = Math.round(center - frac * span);
+    R1 = R0 + span;
+    if (R0 < 0) { R1 -= R0; R0 = 0; }
+    if (R1 > LAST) { R0 -= (R1 - LAST); R1 = LAST; R0 = Math.max(R0, 0); }
+    setBtn("");
+    draw();
+  }, { passive: false });
+
+  let dragStart = null, dragged = false;
+  cv.addEventListener("mousedown", ev => {
+    dragStart = { x: ev.clientX, R0, R1 };
+    dragged = false;
+  });
+  window.addEventListener("mousemove", ev => {
+    if (!dragStart || !geo) return;
+    const dx = ev.clientX - dragStart.x;
+    if (Math.abs(dx) > 3) dragged = true;
+    if (!dragged) return;
+    const pw = geo.w - geo.mL - geo.mR;
+    const span = dragStart.R1 - dragStart.R0;
+    let di = Math.round(-dx / pw * span);
+    let n0 = dragStart.R0 + di, n1 = dragStart.R1 + di;
+    if (n0 < 0) { n1 -= n0; n0 = 0; }
+    if (n1 > LAST) { n0 -= (n1 - LAST); n1 = LAST; n0 = Math.max(n0, 0); }
+    R0 = n0; R1 = n1;
+    cv.style.cursor = "grabbing";
+    tt.style.display = "none";
+    draw();
+  });
+  window.addEventListener("mouseup", () => { dragStart = null; cv.style.cursor = "crosshair"; });
+  cv.addEventListener("dblclick", () => { R0 = 0; R1 = LAST; setBtn("all"); draw(); });
+
+  // --- tooltip + marker click
+  cv.addEventListener("mousemove", ev => {
+    if (!geo || dragged) return;
+    const rect = cv.getBoundingClientRect();
+    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    let onMarker = null;
+    for (const hm of hitMarkers)
+      if (Math.abs(hm.x - mx) < 6 && Math.abs(hm.y - my) < 8) { onMarker = hm; break; }
+    cv.style.cursor = onMarker ? "pointer" : "crosshair";
+    const i = Math.round(R0 + (mx - geo.mL) / (geo.w - geo.mL - geo.mR) * (R1 - R0));
+    if (i < R0 || i > R1 || mx < geo.mL || mx > geo.w - geo.mR) { tt.style.display = "none"; return; }
+    const tr = onMarker ? r.trades[onMarker.m.k] : null;
+    tt.innerHTML = onMarker
+      ? `<b>${onMarker.m.type === "buy" ? "BUY" : "SELL"} — trade #${onMarker.m.k + 1}</b><br>
+         ${dShort(r.dates[onMarker.m.i])} · ${U}${fmt(r.close[onMarker.m.i])}<br>ROI ${pct(tr.roi)} — click for log row`
+      : `<b>${dShort(r.dates[i])}</b><br>${r.symbol} ${U}${fmt(r.close[i])} · regime <b style="color:${r.state[i] === 0 ? "var(--up)" : "var(--down)"}">${r.state[i] === 0 ? "BULL" : "BEAR"}</b>
+         · ${r.pos[i] === 1 ? "IN" : "OUT"}<br>${tagOf(r)} ${mult(r.eq_strat[i] / 1e4)} · B&amp;H ${mult(r.eq_bh[i] / 1e4)}`;
+    tt.style.display = "block";
+    const bw = tt.offsetWidth;
+    tt.style.left = Math.min(mx + 14, geo.w - bw - 8) + "px";
+    tt.style.top = Math.max(my - 40, 4) + "px";
+  });
+  cv.addEventListener("mouseleave", () => { tt.style.display = "none"; });
+  cv.addEventListener("click", ev => {
+    if (dragged) return;
+    const rect = cv.getBoundingClientRect();
+    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    for (const hm of hitMarkers)
+      if (Math.abs(hm.x - mx) < 7 && Math.abs(hm.y - my) < 9) { flashRow(k, hm.m.k); return; }
+  });
+
+  return { draw };
+}
+
+// ---------- build ----------
+// ref_only payloads (e.g. the NDX reference shipped with the stock dashboard
+// solely for the Era Performance NDQ benchmark row) get no tab or panel.
+for (const k of KEYS) if (!DATA[k].ref_only) buildPanel(k, DATA[k]);
+{
+  let histCard = "";
+  if (HISTORY.length) {
+    const hrows = HISTORY.map(h => `<tr>
+      <td class="l" style="font-weight:650; min-width:130px">${h.stage}</td>
+      <td class="l" style="min-width:120px">${h.org}</td>
+      <td class="l" style="min-width:160px">${h.who}</td>
+      <td class="l">${h.what}</td></tr>`).join("");
+    histCard = `<div class="card"><h2>Model history — where the Jump Model comes from</h2>
+      <div class="tblwrap wraptbl"><table><thead><tr>
+        <th class="l">Stage</th><th class="l">Organisation</th><th class="l">Who</th><th class="l">What</th>
+      </tr></thead><tbody>${hrows}</tbody></table></div></div>`;
+  }
+  const mp = document.createElement("div");
+  mp.className = "panel"; mp.id = "panel-model";
+  const modelCards = ["BL", "V1", "V2", "V3", "V4", "V5", "V6"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
+  mp.innerHTML = histCard + modelCards.join("");
+  panelsEl.appendChild(mp);
+  addTab("model", "Model", null);
+}
+activate(KEYS.find(k => !DATA[k].ref_only));
+
+window.addEventListener("resize", () => { const a = document.querySelector(".tab.active"); if (a) charts[a.dataset.target].draw(); });
+const redrawActive = () => { const a = document.querySelector(".tab.active"); if (a) charts[a.dataset.target].draw(); };
+new MutationObserver(redrawActive).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawActive);
+</script>
