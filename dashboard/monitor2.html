@@ -197,7 +197,7 @@ function flipZone(currentState, pBear) {
     : { name: "GREEN", color: "var(--up)", pct };
 }
 {
-  const builtAt = new Date("2026-07-18T12:54:06.713815+00:00");
+  const builtAt = new Date("2026-07-18T17:46:59.399793+00:00");
   const fmtTz = (tz, label) => builtAt.toLocaleString("en-US",
     { timeZone: tz, year: "numeric", month: "short", day: "numeric",
       hour: "2-digit", minute: "2-digit", hour12: false }) + ` ${label}`;
@@ -479,7 +479,7 @@ function buildPanel(k, r) {
   }
   const crisisCard = `<div class="card"><h2>Crisis Performance</h2>
     <div class="caveat"><b style="color:var(--text)">${r.full_name}</b>,
-      Jump Model ${SUFFIX === "BL" ? "baseline" : SUFFIX.toLowerCase()} · trained from <b>${dataStart}</b> ·
+      Jump Model ${SUFFIX === "BL" ? "baseline" : SUFFIX === "V7" ? "v7a" : SUFFIX.toLowerCase()} · trained from <b>${dataStart}</b> ·
       tested ${dShort(r.start)} → ${dShort(r.end)}${U === "" ? " · index points, dividends excluded on both legs" : ""}${inMkt ? "" : ` · <b style="color:var(--down)">currently OUT</b>`}</div>
     <div class="tblwrap">
     <table><thead><tr>
@@ -512,22 +512,26 @@ function buildPanel(k, r) {
         • In <b>BULL</b> (flip-to-bear risk): <b style="color:var(--up)">GREEN</b> ≤40% · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--down)">RED</b> &gt;70%<br>
         • In <b>BEAR</b> (flip-to-bull chance): <b style="color:var(--down)">RED</b> ≤40% (deep in bear) · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--up)">GREEN</b> &gt;70% (recovery near)<br>
         • Shown as each tab's second dot and in the Signal tile</td></tr>`;
+  const vetoProb = SUFFIX === "V7"
+        ? "the combined bear-probability (Jump Model + VM, see the Ensemble row below)"
+        : "the model's own bear-probability";
   const vetoBullet = !["V5", "V6", "V7"].includes(SUFFIX) ? "" :
-        `<br>• <b>Conviction veto (v5)</b>: a bear flip also needs the model's own bear-probability ≥&thinsp;60% on the day it would publish — low-conviction bear alarms (historically false: the market averaged <b>+2.1%</b> over such skipped calls) are held back, retried daily, and still publish the moment conviction arrives (91% of genuine bear flips pass with zero delay)<br>
+        `<br>• <b>Conviction veto (v5)</b>: a bear flip also needs ${vetoProb} ≥&thinsp;60% on the day it would publish — low-conviction bear alarms (historically false: the market averaged <b>+2.1%</b> over such skipped calls) are held back, retried daily, and still publish the moment conviction arrives (91% of genuine bear flips pass with zero delay)<br>
         • Bull re-entries are deliberately NOT vetoed — at V-shaped bottoms the first rebound days are the most valuable of the cycle, and every re-entry filter tested paid 4–6% per episode there`;
   const holdBullet = !["V6", "V7"].includes(SUFFIX) ? "" :
         `<br>• <b>Minimum hold (v6)</b>: once the signal flips, it holds for at least <b>8 trading days</b> — a pending reversal is blocked, retried daily, and publishes the first day the hold expires if it still stands (delayed, never lost); if the pressure passes first, no flip appears at all<br>
         • <b>Guarantee: no published signal ever reverses in under 8 trading days.</b> The flip-risk light keeps moving in real time during a hold, so a pending reversal shows as elevated risk on a stable signal`;
-  const refinedTag = { V5: ", refined v5", V6: ", refined v5–v6", V7: ", refined v5–v7" }[SUFFIX] ?? "";
+  const refinedTag = { V5: ", refined v5", V6: ", refined v5–v6", V7: ", refined v5–v7a" }[SUFFIX] ?? "";
   const confirmRow = !["V4", "V5", "V6", "V7"].includes(SUFFIX) ? "" : `<tr><td class="l" style="font-weight:650">Signal confirmation — added (v4${refinedTag})</td>
         <td class="l">
         • A flip to <b>bear</b> publishes after <b>2</b> consecutive bear days; a flip to <b>bull</b> after <b>3</b> consecutive bull days (exits confirm faster than re-entries)<br>
         • Keeps 1–2-day whipsaw flips out of the published signal — users simply follow the signal shown, no waiting rules to apply<br>
         • During an unconfirmed flip, the signal holds and the flip-risk % reads high — the pending call appears as elevated risk, not as a flip<br>
         • Cost: genuine flips publish 1–2 days later (e.g. NDX COVID exit 17→19 trading days after the peak)${vetoBullet}${holdBullet}</td></tr>`;
-  const ensembleRow = SUFFIX !== "V7" ? "" : `<tr><td class="l" style="font-weight:650">Ensemble with Combo v2 — added (v7)</td>
+  const ensembleRow = SUFFIX !== "V7" ? "" : `<tr><td class="l" style="font-weight:650">Ensemble with the Volatility Model — added (v7a)</td>
         <td class="l">
-        • Blends the model's own bear-probability 50/50 with an independent, rule-based model ("Combo v2": volatility, trend, and volume-recovery signals) before the confirmation gates above are applied<br>
+        • Averages the Jump Model's bear-probability 50/50 with the continuous bear-confidence of an independent, rule-based <b>Volatility Model (VM)</b> — volatility-breakout, trend, and volume-recovery signals<br>
+        • The daily raw bull/bear reading still comes from the Jump Model alone — the combined score is what the conviction veto reads and what the flip-risk light shows, so VM can both hold back a low-conviction bear call and vouch for a marginal one<br>
         • <b>Gain (11-market average): capture +16.8% vs the model alone</b> — fixes two markets that previously lagged buy-and-hold<br>
         • One accepted trade-off: NVDA capture is lower under this blend — see the experiment log for detail</td></tr>`;
   const execRow = `<tr><td class="l" style="font-weight:650">Execution</td>
@@ -567,7 +571,7 @@ function buildPanel(k, r) {
       ${execRow}
       ${referenceRow}
     </tbody></table></div></div>`
-    : `<div class="card"><h2>Statistical Jump Model ${SUFFIX.toLowerCase()} — changes vs the baseline</h2>
+    : `<div class="card"><h2>Statistical Jump Model ${SUFFIX === "V7" ? "v7a" : SUFFIX.toLowerCase()} — changes vs the baseline</h2>
     <div class="tblwrap wraptbl"><table><tbody>
       <tr><td class="l" style="font-weight:650">Data / Walk-forward / States</td>
         <td class="l">Mechanism unchanged.<br>
@@ -604,7 +608,7 @@ function buildPanel(k, r) {
   // repeating it once per tab. Rendered in fixed BL-then-V3 order regardless
   // of which tab is processed first.
   if (!(SUFFIX in modelCardsBySuffix)) {
-    modelCardsBySuffix[SUFFIX] = `<div class="caveat"><b style="color:var(--accent)">JM_${SUFFIX}</b> — model details</div>`
+    modelCardsBySuffix[SUFFIX] = `<div class="caveat"><b style="color:var(--accent)">JM_${SUFFIX === "V7" ? "V7A" : SUFFIX}</b> — model details</div>`
       + methodCard;
   }
   panelsEl.appendChild(p);
