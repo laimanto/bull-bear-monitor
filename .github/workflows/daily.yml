@@ -45,6 +45,10 @@ jobs:
           python build_payloads.py
           python build_dashboard.py ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
           python build_dashboard.py ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
+          python build_regimes_v7.py
+          python build_payloads.py --variant=V7
+          python build_dashboard.py --variant=V7 ../dashboard/index_v7.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
+          python build_dashboard.py --variant=V7 ../dashboard/monitor2_v7.html GOLD ARKQ MSFT NVDA NDX:ref
         working-directory: scripts
 
       - name: Commit refreshed data + dashboards
@@ -60,6 +64,8 @@ jobs:
           mkdir -p _site
           cp "dashboard/index.html" _site/index.html
           cp "dashboard/monitor2.html" _site/monitor2.html
+          cp "dashboard/index_v7.html" _site/index_v7.html
+          cp "dashboard/monitor2_v7.html" _site/monitor2_v7.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

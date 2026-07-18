@@ -142,6 +142,7 @@
 <div class="wrap">
   <div class="head">
     <h1>Bull Bear Monitor</h1>
+    __NAV_LINK_HTML__
     <div class="stamp" id="stamp"></div>
   </div>
   <div class="sub" id="sub"></div>
@@ -505,19 +506,25 @@ function buildPanel(k, r) {
         • In <b>BULL</b> (flip-to-bear risk): <b style="color:var(--up)">GREEN</b> ≤40% · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--down)">RED</b> &gt;70%<br>
         • In <b>BEAR</b> (flip-to-bull chance): <b style="color:var(--down)">RED</b> ≤40% (deep in bear) · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--up)">GREEN</b> &gt;70% (recovery near)<br>
         • Shown as each tab's second dot and in the Signal tile</td></tr>`;
-  const vetoBullet = !["V5", "V6"].includes(SUFFIX) ? "" :
+  const vetoBullet = !["V5", "V6", "V7"].includes(SUFFIX) ? "" :
         `<br>• <b>Conviction veto (v5)</b>: a bear flip also needs the model's own bear-probability ≥&thinsp;60% on the day it would publish — low-conviction bear alarms (historically false: the market averaged <b>+2.1%</b> over such skipped calls) are held back, retried daily, and still publish the moment conviction arrives (91% of genuine bear flips pass with zero delay)<br>
         • Bull re-entries are deliberately NOT vetoed — at V-shaped bottoms the first rebound days are the most valuable of the cycle, and every re-entry filter tested paid 4–6% per episode there`;
-  const holdBullet = SUFFIX !== "V6" ? "" :
+  const holdBullet = !["V6", "V7"].includes(SUFFIX) ? "" :
         `<br>• <b>Minimum hold (v6)</b>: once the signal flips, it holds for at least <b>8 trading days</b> — a pending reversal is blocked, retried daily, and publishes the first day the hold expires if it still stands (delayed, never lost); if the pressure passes first, no flip appears at all<br>
         • <b>Guarantee: no published signal ever reverses in under 8 trading days.</b> The flip-risk light keeps moving in real time during a hold, so a pending reversal shows as elevated risk on a stable signal`;
-  const refinedTag = { V5: ", refined v5", V6: ", refined v5–v6" }[SUFFIX] ?? "";
-  const confirmRow = !["V4", "V5", "V6"].includes(SUFFIX) ? "" : `<tr><td class="l" style="font-weight:650">Signal confirmation — added (v4${refinedTag})</td>
+  const refinedTag = { V5: ", refined v5", V6: ", refined v5–v6", V7: ", refined v5–v7" }[SUFFIX] ?? "";
+  const confirmRow = !["V4", "V5", "V6", "V7"].includes(SUFFIX) ? "" : `<tr><td class="l" style="font-weight:650">Signal confirmation — added (v4${refinedTag})</td>
         <td class="l">
         • A flip to <b>bear</b> publishes after <b>2</b> consecutive bear days; a flip to <b>bull</b> after <b>3</b> consecutive bull days (exits confirm faster than re-entries)<br>
         • Keeps 1–2-day whipsaw flips out of the published signal — users simply follow the signal shown, no waiting rules to apply<br>
         • During an unconfirmed flip, the signal holds and the flip-risk % reads high — the pending call appears as elevated risk, not as a flip<br>
         • Cost: genuine flips publish 1–2 days later (e.g. NDX COVID exit 17→19 trading days after the peak)${vetoBullet}${holdBullet}</td></tr>`;
+  const ensembleRow = SUFFIX !== "V7" ? "" : `<tr><td class="l" style="font-weight:650">Ensemble confidence blend — added (v7)</td>
+        <td class="l">
+        • The model's own bear-probability is averaged 50/50 with an independent, rule-based model ("Combo v2": realized-volatility breaker + 50/200-day moving-average trend + volume-recovery override, all thresholds walk-forward calibrated, never fit on future data) before the v5/v6 gates above are applied<br>
+        • A genuine decision-level ensemble — neither model gates, vetoes, or overrides the other; the blended confidence simply feeds the same confirmation/hold machinery<br>
+        • <b>Gain (11-market average): +5.9% capture vs the prior best design, +16.8% vs v6 alone</b> — fixes two markets (HSCEI, KOSPI) where v6 alone lost to buy-and-hold<br>
+        • Known trade-off, kept deliberately: <b>NVDA regresses</b> (capture 0.54× → 0.48×) — NVDA's own walk-forward volatility trigger sits far above the level of a real-but-moderate pullback, so Combo v2 stays silent exactly when the Jump Model is already confidently right, and averaging mutes that correct call. Tested and rejected as fixes: recalibrating Combo v2's confidence scale, and two adaptive weighting schemes (magnitude- and track-record-based) — both made NVDA worse, not better, since Combo v2's "silent" reading is itself a confident signal, not an uncertain one.</td></tr>`;
   const execRow = `<tr><td class="l" style="font-weight:650">Execution</td>
         <td class="l">Signal at close of day t → trade at close of day t+1 → first return earned day t+2 ·
         10&thinsp;bps per switch · cash earns 13-week T-bills while out.</td></tr>`;
@@ -581,6 +588,7 @@ function buildPanel(k, r) {
       <tr><td class="l" style="font-weight:650">Jump penalty λ, Execution</td>
         <td class="l">Unchanged mechanism. Year-by-year λ values: see the experiment log.</td></tr>
       ${confirmRow}
+      ${ensembleRow}
       ${flipRow}
     </tbody></table></div></div>`;
 
@@ -892,7 +900,7 @@ for (const k of KEYS) if (!DATA[k].ref_only) buildPanel(k, DATA[k]);
   }
   const mp = document.createElement("div");
   mp.className = "panel"; mp.id = "panel-model";
-  const modelCards = ["BL", "V1", "V2", "V3", "V4", "V5", "V6"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
+  const modelCards = ["BL", "V1", "V2", "V3", "V4", "V5", "V6", "V7"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
   mp.innerHTML = histCard + modelCards.join("");
   panelsEl.appendChild(mp);
   addTab("model", "Model", null);

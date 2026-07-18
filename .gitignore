@@ -12,12 +12,16 @@
 !/scripts/build_regimes.py
 !/scripts/build_payloads.py
 !/scripts/build_dashboard.py
+!/scripts/combo_v2.py
+!/scripts/build_regimes_v7.py
 
 !/dashboard
 /dashboard/*
 !/dashboard/dashboard_template_prod.html
 !/dashboard/index.html
 !/dashboard/monitor2.html
+!/dashboard/index_v7.html
+!/dashboard/monitor2_v7.html
 
 !/data
 /data/*
