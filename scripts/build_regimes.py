@@ -243,13 +243,7 @@ def confirm_v6(states, p_bear):
     return pd.Series(out, index=states.index)
 
 
-def compute_raw(market):
-    """JM's raw (pre-decode) walk-forward output: close/ret/rf plus the raw
-    stage-2 state path and continuous p_bear, before any decode (v6/v7/...)
-    is applied. Fully cache-driven (models/{market}_stage*_{year}.joblib) -
-    calling this after build_regimes.py has already run for `market` is a
-    cache hit, not a recompute; used by build_regimes_v7.py so the ensemble
-    build never re-walks JM's own history."""
+def build_market(market):
     cfg = SYMBOLS[market]
     close, ret, rf = load_data(cfg)
     v0 = VOL_START.get(market)
@@ -312,19 +306,13 @@ def compute_raw(market):
 
     raw_states = state_out.dropna()
     p_bear_full = pbear_out.reindex(raw_states.index)
-    lam_full = lam_out.reindex(raw_states.index)
-    return close, ret, rf, raw_states, p_bear_full, lam_full
-
-
-def build_market(market):
-    close, ret, rf, raw_states, p_bear_full, lam_full = compute_raw(market)
     published = confirm_v6(raw_states, p_bear_full)
 
     pd.DataFrame({"close": close.reindex(raw_states.index),
                   "ret": ret.reindex(raw_states.index),
                   "rf": rf.reindex(raw_states.index),
                   "state": published,
-                  "lam": lam_full,
+                  "lam": lam_out.reindex(raw_states.index),
                   "p_bear": p_bear_full}
                  ).to_csv(os.path.join(RESULTS_DIR, f"regimes_{market}_V6.csv"))
     print(f"{market}: regimes_{market}_V6.csv written, {len(raw_states)} rows, "

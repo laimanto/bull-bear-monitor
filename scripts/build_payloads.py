@@ -126,9 +126,9 @@ def build_trades(df):
     return trades
 
 
-def main(sym, variant="V6"):
-    base = sym
-    df = pd.read_csv(os.path.join(RESULTS_DIR, f"regimes_{sym}_{variant}.csv"), index_col=0, parse_dates=True)
+def main(sym):
+    base, variant = sym, "V6"
+    df = pd.read_csv(os.path.join(RESULTS_DIR, f"regimes_{sym}_V6.csv"), index_col=0, parse_dates=True)
     df["pos"] = (df["state"] == 0).astype(float).shift(2)
     df["pos"] = df["pos"].fillna(df["state"].iloc[0] == 0 and 1.0 or 0.0)
     switch = df["pos"].diff().abs().fillna(0.0)
@@ -274,17 +274,12 @@ def main(sym, variant="V6"):
         panels=panels, trades=trades, crises=crises, signal=signal,
         lam_by_year={str(k): float(v) for k, v in lam_by_year.items()},
     )
-    with open(os.path.join(RESULTS_DIR, f"payload_{sym}_{variant}.json"), "w") as f:
+    with open(os.path.join(RESULTS_DIR, f"payload_{sym}_V6.json"), "w") as f:
         json.dump(payload, f)
-    print(f"{len(trades)} round trips; payload_{sym}_{variant}.json written.")
+    print(f"{len(trades)} round trips; payload_{sym}_V6.json written.")
 
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    variant = "V6"
-    if args and args[0].startswith("--variant="):
-        variant = args[0].split("=", 1)[1]
-        args = args[1:]
-    markets = [m.upper() for m in args] or MARKETS
+    markets = [m.upper() for m in sys.argv[1:]] or MARKETS
     for m in markets:
-        main(m, variant)
+        main(m)
