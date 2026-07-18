@@ -1,12 +1,13 @@
-"""Merge per-market v6 payloads into the dashboard template - ported from the
-research repo's make_dashboard_prod.py (unchanged logic; only paths and the
-single-variant "_V6" convention are baked in since this repo only ever runs
-the current production model).
+"""Merge per-market payloads into the dashboard template - ported from the
+research repo's make_dashboard_prod.py (unchanged logic; only paths are
+baked in). Variant defaults to V6; pass --variant=V7 to build from the
+ensemble's payloads instead (this is what index.html/monitor2.html use as
+of the v7 switch - see daily.yml).
 
-Usage: python build_dashboard.py OUT_PATH MARKET [MARKET:ref ...]
+Usage: python build_dashboard.py [--variant=V7] OUT_PATH MARKET [MARKET:ref ...]
 Example:
-  python build_dashboard.py ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
-  python build_dashboard.py ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
+  python build_dashboard.py --variant=V7 ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
+  python build_dashboard.py --variant=V7 ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
 """
 import json
 import os
@@ -18,13 +19,18 @@ RESULTS_DIR = os.path.join(DIR, "..", "results")
 DASHBOARD_DIR = os.path.join(DIR, "..", "dashboard")
 DATA_DIR = os.path.join(DIR, "..", "data")
 
-out_path = sys.argv[1]
-markets = sys.argv[2:]
+args = sys.argv[1:]
+variant = "V6"
+if args and args[0].startswith("--variant="):
+    variant = args[0].split("=", 1)[1]
+    args = args[1:]
+out_path = args[0]
+markets = args[1:]
 
 data = {}
 for m in markets:
     m, _, flag = m.partition(":")
-    key = f"{m}_V6"
+    key = f"{m}_{variant}"
     with open(os.path.join(RESULTS_DIR, f"payload_{key}.json")) as f:
         data[key] = json.load(f)
     if flag == "ref":

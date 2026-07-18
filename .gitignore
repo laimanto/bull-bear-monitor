@@ -1,4 +1,4 @@
-# Whitelist: ONLY the Bull-Bear Monitor v6 pipeline is published.
+# Whitelist: ONLY the Bull-Bear Monitor production pipeline is published.
 # Research scripts, experiment docs, private notes and scratch data stay local.
 /*
 !/.gitignore
@@ -10,8 +10,10 @@
 /scripts/*
 !/scripts/update_data.py
 !/scripts/build_regimes.py
+!/scripts/build_regimes_v7.py
 !/scripts/build_payloads.py
 !/scripts/build_dashboard.py
+!/scripts/combo_v2.py
 
 !/dashboard
 /dashboard/*

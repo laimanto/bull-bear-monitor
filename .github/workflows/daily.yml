@@ -42,9 +42,11 @@ jobs:
       - name: Build regimes, payloads and dashboards
         run: |
           python build_regimes.py
-          python build_payloads.py
-          python build_dashboard.py ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
-          python build_dashboard.py ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
+          python build_regimes_v7.py
+          python build_payloads.py --variant=V6
+          python build_payloads.py --variant=V7
+          python build_dashboard.py --variant=V7 ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
+          python build_dashboard.py --variant=V7 ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
         working-directory: scripts
 
       - name: Commit refreshed data + dashboards
