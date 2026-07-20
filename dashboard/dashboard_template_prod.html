@@ -195,8 +195,8 @@ function flipZone(currentState, pBear) {
     { timeZone: tz, year: "numeric", month: "short", day: "numeric",
       hour: "2-digit", minute: "2-digit", hour12: false }) + ` ${label}`;
   document.getElementById("stamp").innerHTML =
-    `Updated ${fmtTz("America/Toronto", "Toronto")}<br>
-     ${fmtTz("Asia/Hong_Kong", "HK")}<br>Data through ${dShort(first.end)}`;
+    `Updated ${fmtTz("America/Toronto", "UTC-4")}<br>
+     ${fmtTz("Asia/Hong_Kong", "UTC+8")}<br>Data through ${dShort(first.end)}`;
 }
 document.getElementById("sub").innerHTML =
   `Daily <b>bull / bear</b> market signal — fully invested in BULL, 3-month T-bills in BEAR.
