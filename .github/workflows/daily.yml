@@ -8,19 +8,57 @@ on:
     # settle LATER than the equity close this schedule was originally sized
     # around - safely past both, with hours of buffer past Asia/Europe too.
     - cron: "30 0 * * 2-6"
+    # Fallback, 2h later. GitHub Actions' `schedule` trigger is best-effort
+    # and observably drops/delays runs on low-traffic repos (confirmed here:
+    # the 00:30 slot silently skipped a day and then went dark for 3+ days
+    # straight in 2026-07). The `check` job below only lets this slot do
+    # real work if nothing has succeeded yet today, so on a normal day it's
+    # a no-op that exits in seconds.
+    - cron: "30 2 * * 2-6"
   workflow_dispatch:
 
 permissions:
   contents: write
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: daily-update
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Only the fallback (2h-later) cron slot needs gating - the primary
+          # slot and manual/dispatch triggers always run.
+          if [ "${{ github.event.schedule }}" != "30 2 * * 2-6" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          today_start="$(date -u +%Y-%m-%dT00:00:00Z)"
+          already_ran=$(gh api "repos/$REPO/actions/workflows/daily.yml/runs" \
+            -f status=success -f created=">=${today_start}" \
+            --jq '.workflow_runs | length')
+          if [ "$already_ran" -gt 0 ]; then
+            echo "Primary run already succeeded today ($already_ran run(s)) - skipping." >&2
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No successful run yet today - running as fallback." >&2
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
   update-build-deploy:
+    needs: check
+    if: needs.check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
