@@ -62,7 +62,15 @@ jobs:
             exit 0
           fi
           today_start="$(date -u +%Y-%m-%dT00:00:00Z)"
-          already_ran=$(gh api "repos/$REPO/actions/workflows/daily.yml/runs" \
+          # --method GET is REQUIRED: `gh api` silently switches to POST as
+          # soon as any -f parameter is present, and POSTing to the runs-list
+          # endpoint 404s. Without it this step failed in <10s every time the
+          # fallback fired (observed 2026-07-24 05:34 and 2026-07-25 05:27),
+          # so the safety net never actually ran. The original "verified
+          # working" check was a manual workflow_dispatch, which exits at the
+          # branch above and never reaches this call.
+          already_ran=$(gh api --method GET \
+            "repos/$REPO/actions/workflows/daily.yml/runs" \
             -f status=success -f created=">=${today_start}" \
             --jq '.workflow_runs | length')
           if [ "$already_ran" -gt 0 ]; then
