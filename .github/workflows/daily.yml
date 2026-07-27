@@ -2,19 +2,36 @@ name: Daily update & publish
 
 on:
   schedule:
-    # 00:30 UTC Tue-Sat = ~8-8:30pm US Eastern Mon-Fri evenings (a single
-    # fixed UTC value can't track DST exactly; this lands 7:30-8:30pm ET
-    # depending on season). Chosen because v6 covers gold futures, which
-    # settle LATER than the equity close this schedule was originally sized
-    # around - safely past both, with hours of buffer past Asia/Europe too.
-    - cron: "30 0 * * 2-6"
+    # 03:30 UTC Tue-Sat (v8, 2026-07-27; was 00:30, and in practice GitHub
+    # was firing it ~03:50 anyway).
+    #
+    # The intraday-bar bug this version fixes was NOT caused by the schedule
+    # and cannot be fixed by one - it is fixed by the settlement guard in
+    # scripts/update_data.py, which refuses to store any bar whose session
+    # has not provably closed. The schedule's only remaining job is to sit
+    # where the data we want is actually AVAILABLE, and that argues for a
+    # LATER slot, not an earlier one:
+    #   - Yahoo does not publish a consolidated daily bar for the Asian
+    #     indices until roughly 20h after their close (verified 3x: no
+    #     ^HSI bar for Mon 2026-07-20 at 16:54 UTC that day, present by
+    #     03:57 UTC the next morning; likewise no 07-27 bar at 18:10 UTC).
+    #     An evening-UTC slot would therefore leave HSI/HSCEI/KOSPI/NIKKEI
+    #     a full day stale every single day.
+    #   - US bars settle 21:30 UTC, London 17:30 UTC - both long done.
+    #   - GC=F's Globex session for bar D only finishes 17:00 ET on D+1, so
+    #     gold is one day behind whatever we do (see update_data.py).
+    # 03:30 UTC on D+1 is the first moment all four venues' day-D bars are
+    # both settled and published. The day-D+1 Asian sessions are already
+    # trading by then; the guard drops those partial bars.
+    - cron: "30 3 * * 2-6"
     # Fallback, 2h later. GitHub Actions' `schedule` trigger is best-effort
     # and observably drops/delays runs on low-traffic repos (confirmed here:
-    # the 00:30 slot silently skipped a day and then went dark for 3+ days
-    # straight in 2026-07). The `check` job below only lets this slot do
-    # real work if nothing has succeeded yet today, so on a normal day it's
-    # a no-op that exits in seconds.
-    - cron: "30 2 * * 2-6"
+    # a slot silently skipped a day and then went dark for 3+ days straight
+    # in 2026-07). The `check` job below only lets this slot do real work if
+    # nothing has succeeded yet today, so on a normal day it's a no-op that
+    # exits in seconds. Both slots are on the same UTC day, so the job's
+    # midnight-anchored "already ran today?" test stays valid.
+    - cron: "30 5 * * 2-6"
   workflow_dispatch:
 
 permissions:
@@ -40,7 +57,7 @@ jobs:
         run: |
           # Only the fallback (2h-later) cron slot needs gating - the primary
           # slot and manual/dispatch triggers always run.
-          if [ "${{ github.event.schedule }}" != "30 2 * * 2-6" ]; then
+          if [ "${{ github.event.schedule }}" != "30 5 * * 2-6" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
