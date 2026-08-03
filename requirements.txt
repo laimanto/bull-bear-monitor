@@ -1,7 +1,7 @@
-pandas
-numpy
+pandas==3.0.3
+numpy==2.4.6
 yfinance
-jumpmodels
+jumpmodels==0.1.1
 joblib
 openpyxl
-scikit-learn
+scikit-learn==1.9.0

@@ -52,20 +52,30 @@ INDEX_MARKETS = ["NDX", "SPX", "HSI", "HSCEI", "KOSPI", "NIKKEI", "FTSE"]
 CONFIG = "ret70flat"
 
 
-def _fit_key(m, year, cols, w, Xtr, ret_tr):
-    """Everything a fit depends on, hashed.
+def _fit_key(m, year, cols, w, close_tr, ret_tr, rf_tr, n_rows):
+    """Everything a fit depends on, hashed - on PLATFORM-STABLE inputs only.
 
     Keyed on the TRAINING DATA ITSELF, not just the config. `ma_family._cache_key`
     hashes only (market, columns, weights), which silently survives a data refresh -
     it would hand back a pre-refresh fit for a post-refresh series. Hashing the
     values also catches a yfinance re-adjustment (a split rescales history without
     changing any date or row count).
+
+    WHY close/ret/rf AND NOT THE FEATURE MATRIX: the first CI run (2026-08-03)
+    missed all 491 cached fits, because the features go through ewm/log and libm's
+    transcendentals differ in the last bit between platforms (Windows/py3.14 wrote
+    the cache, Linux/py3.12 read it). close, ret and rf are produced from the
+    committed CSV bytes by pure IEEE arithmetic (correctly-rounded, bit-identical
+    everywhere), so this key is portable while still rotating on any real data
+    change - a split or dividend re-adjustment rescales every close. Known gap:
+    a volume-ONLY revision does not rotate the key; in practice volume revisions
+    accompany price re-adjustments.
     """
     h = hashlib.md5()
-    h.update(f"{m}|{CONFIG}|{year}|{','.join(cols)}|".encode())
+    h.update(f"{m}|{CONFIG}|{year}|{','.join(cols)}|{n_rows}|".encode())
     h.update(np.ascontiguousarray(w, dtype=np.float64).tobytes())
-    h.update(np.ascontiguousarray(Xtr.to_numpy(), dtype=np.float64).tobytes())
-    h.update(np.ascontiguousarray(ret_tr.to_numpy(), dtype=np.float64).tobytes())
+    for s in (close_tr, ret_tr, rf_tr):
+        h.update(np.ascontiguousarray(s.to_numpy(), dtype=np.float64).tobytes())
     return h.hexdigest()[:16]
 
 
@@ -116,7 +126,8 @@ def build(m):
         # An annual walk-forward only ever GAINS a year: appending recent bars leaves
         # every prior year's training slice untouched, so a data refresh should fit
         # one model, not all of them.
-        key = _fit_key(m, year, list(X.columns), w, Xtr, ret.reindex(Xtr.index))
+        key = _fit_key(m, year, list(X.columns), w, close.reindex(Xtr.index),
+                       ret.reindex(Xtr.index), rf.reindex(Xtr.index), len(Xtr))
         hit = load_fit(key)
         if hit is not None:
             b, sf, blam = hit["model"], hit["scaler"], hit["lam"]
