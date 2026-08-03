@@ -1,13 +1,23 @@
-# Bull-Bear Monitor — v6
+# Bull-Bear Monitor — BBM v16
 
-A daily IN/OUT market-regime signal for 11 markets — **NASDAQ-100, S&P 500,
-Hang Seng, HSCEI, KOSPI, Nikkei 225, FTSE 100, Gold (COMEX futures), ARKQ,
-Microsoft, NVIDIA** — published as two self-contained dashboards:
-[`dashboard/index.html`](dashboard/index.html) (the 7 indexes) and
-[`dashboard/monitor2.html`](dashboard/monitor2.html) (Gold/ARKQ/MSFT/NVDA),
-both served at this repo's GitHub Pages URL.
+An IN/OUT market-regime signal for 29 markets, published as four linked
+self-contained dashboards (BBM v16, built 2026-08-03) served at this repo's
+GitHub Pages URL:
 
-## The model
+- [`dashboard/index.html`](dashboard/index.html) — Global indexes (NDX, SPX, HSI, KOSPI, Nikkei, FTSE)
+- [`dashboard/us.html`](dashboard/us.html) — US tech (AAPL, AMZN, ARKQ, GOOGL, META, MSFT, MU, NVDA, SMH, TSLA)
+- [`dashboard/hk.html`](dashboard/hk.html) — Hong Kong (0005, 0388, 0700, 0939, 0941, 1800, 1810, 9988)
+- [`dashboard/commodity.html`](dashboard/commodity.html) — Commodity & crypto (Gold, Silver, WTI, BTC, ETH)
+
+BBM is a dual-model system: per market it uses either the Jump Model (JM) or
+the Volatility Model (VM), assigned by a rule evaluated on the jump model
+alone. The current model write-up, per-market ratings and full trade history
+are on each dashboard's **Model** tab. These pages are static snapshots built
+by the research pipeline; the daily workflow currently refreshes price data
+only (the previous JM v6/v7 daily build was retired 2026-08-03 when these
+pages replaced the v7 dashboards).
+
+## The model (HISTORICAL — describes the earlier JM v6/v7 system)
 
 A Statistical Jump Model (Shu, Yu & Mulvey 2024,
 [arxiv.org/abs/2402.05272](https://arxiv.org/abs/2402.05272)) walk-forward:

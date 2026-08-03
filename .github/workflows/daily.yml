@@ -102,17 +102,13 @@ jobs:
         run: python update_data.py
         working-directory: scripts
 
-      - name: Build regimes, payloads and dashboards
-        run: |
-          python build_regimes.py
-          python build_regimes_v7.py
-          python build_payloads.py --variant=V6
-          python build_payloads.py --variant=V7
-          python build_dashboard.py --variant=V7 ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
-          python build_dashboard.py --variant=V7 ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
-        working-directory: scripts
+      # The JM v7 daily build was RETIRED 2026-08-03 when the four static BBM
+      # v16 boards replaced the v7 dashboards. The build scripts stay in the
+      # repo (they still work) in case a daily v16 pipeline is ported later;
+      # until then this workflow only keeps the price CSVs fresh and
+      # republishes the static pages.
 
-      - name: Commit refreshed data + dashboards
+      - name: Commit refreshed data
         run: |
           git config user.name "bull-bear-bot"
           git config user.email "laimanto@gmail.com"
@@ -124,6 +120,9 @@ jobs:
         run: |
           mkdir -p _site
           cp "dashboard/index.html" _site/index.html
+          cp "dashboard/us.html" _site/us.html
+          cp "dashboard/hk.html" _site/hk.html
+          cp "dashboard/commodity.html" _site/commodity.html
           cp "dashboard/monitor2.html" _site/monitor2.html
 
       - uses: actions/upload-pages-artifact@v3

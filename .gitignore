@@ -20,6 +20,9 @@
 !/dashboard/dashboard_template_prod.html
 !/dashboard/index.html
 !/dashboard/monitor2.html
+!/dashboard/us.html
+!/dashboard/hk.html
+!/dashboard/commodity.html
 
 !/data
 /data/*
