@@ -12,10 +12,11 @@ GitHub Pages URL:
 BBM is a dual-model system: per market it uses either the Jump Model (JM) or
 the Volatility Model (VM), assigned by a rule evaluated on the jump model
 alone. The current model write-up, per-market ratings and full trade history
-are on each dashboard's **Model** tab. These pages are static snapshots built
-by the research pipeline; the daily workflow currently refreshes price data
-only (the previous JM v6/v7 daily build was retired 2026-08-03 when these
-pages replaced the v7 dashboards).
+are on each dashboard's **Model** tab. The daily workflow refreshes the price
+data and rebuilds all four boards end-to-end (`scripts/rebuild_daily.py`);
+JumpModel fits are cached in `fitcache/` keyed on the training data, so daily
+runs do warm inference only and a new fit happens once per market at the
+January rollover. The previous JM v6/v7 pipeline was retired 2026-08-03.
 
 ## The model (HISTORICAL — describes the earlier JM v6/v7 system)
 

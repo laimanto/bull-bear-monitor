@@ -99,16 +99,27 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Update data (append the latest closes)
-        run: python update_data.py
+        run: |
+          python update_data.py
+          # hk9988_long.csv is DERIVED (BABA spliced to 9988.HK) - the scored
+          # file goes stale unless this runs after every data refresh.
+          python splice_hk9988.py
         working-directory: scripts
 
-      # The JM v7 daily build was RETIRED 2026-08-03 when the four static BBM
-      # v16 boards replaced the v7 dashboards. The build scripts stay in the
-      # repo (they still work) in case a daily v16 pipeline is ported later;
-      # until then this workflow only keeps the price CSVs fresh and
-      # republishes the static pages.
+      # BBM v16 pipeline, ported from the research repo 2026-08-03 (replacing
+      # the retired JM v7 build). Warm runs do inference only - the fitcache/
+      # holds every JumpModel fit, keyed on the training data itself, so a new
+      # fit is expected only at the January rollover (one per market). If the
+      # cache stops matching the data (e.g. a --full re-download rescaled
+      # history), MAX_NEW_FITS aborts the run rather than training for hours
+      # in CI - rebuild locally and commit the refreshed fitcache/ instead.
+      - name: Build BBM v16 boards
+        run: python rebuild_daily.py
+        working-directory: scripts
+        env:
+          MAX_NEW_FITS: "40"
 
-      - name: Commit refreshed data
+      - name: Commit refreshed data + results + dashboards
         run: |
           git config user.name "bull-bear-bot"
           git config user.email "laimanto@gmail.com"

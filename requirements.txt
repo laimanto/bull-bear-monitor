@@ -4,3 +4,4 @@ yfinance
 jumpmodels
 joblib
 openpyxl
+scikit-learn

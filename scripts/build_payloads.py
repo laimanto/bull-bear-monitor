@@ -27,8 +27,23 @@ NAMES = {"NDX": "NASDAQ-100 Index (^NDX)", "HSI": "Hang Seng Index (^HSI)",
          "SPX": "S&P 500 Index (^GSPC)", "HSCEI": "Hang Seng China Enterprises (^HSCEI)",
          "NIKKEI": "Nikkei 225 (^N225)", "FTSE": "FTSE 100 (^FTSE)",
          "GOLD": "Gold (COMEX futures, GC=F)", "ARKQ": "ARK Autonomous Tech & Robotics ETF (ARKQ)",
-         "MSFT": "Microsoft Corp (MSFT)", "NVDA": "NVIDIA Corp (NVDA)"}
+         "MSFT": "Microsoft Corp (MSFT)", "NVDA": "NVIDIA Corp (NVDA)",
+         "AAPL": "Apple Inc (AAPL)", "GOOGL": "Alphabet Inc (GOOGL)",
+         "AMZN": "Amazon.com Inc (AMZN)", "META": "Meta Platforms (META)",
+         "TSLA": "Tesla Inc (TSLA)", "MU": "Micron Technology (MU)",
+         "SMH": "VanEck Semiconductor ETF (SMH) - proxy for .SOX",
+         "HK0005": "HSBC Holdings (0005.HK)", "HK0388": "HK Exchanges & Clearing (0388.HK)",
+         "HK0700": "Tencent Holdings (0700.HK)", "HK0941": "China Mobile (0941.HK)",
+         "HK0939": "China Construction Bank (0939.HK)",
+         "HK1800": "China Communications Construction (1800.HK)",
+         "HK1810": "Xiaomi Corp (1810.HK)", "HK9988": "Alibaba Group (9988.HK)",
+         "SILVER": "Silver (iShares Silver Trust, SLV)",
+         "WTI": "WTI Crude Oil (United States Oil Fund, USO)",
+         "BTC": "Bitcoin (BTC-USD, weekdays only)",
+         "ETH": "Ethereum (ETH-USD, weekdays only)",
+         }
 INDEX_SYMS = {"NDX", "HSI", "KOSPI", "SPX", "HSCEI", "NIKKEI", "FTSE"}
+# everything else is price-quoted in its own currency; HK names in HKD, crypto in USD
 
 TRAINING_START = {
     "NDX": "1985-10-02", "SPX": "1985-01-02",
@@ -70,6 +85,14 @@ CRISES_GOLD = [
 CRISES_BY_SYMBOL = {"GOLD": CRISES_GOLD}
 
 
+def _num(v):
+    """float, or None for NaN/missing - so json.dump writes null, never NaN."""
+    if v is None:
+        return None
+    v = float(v)
+    return None if np.isnan(v) else v
+
+
 def metrics(strat, bh, rf):
     def side(r):
         eq = (1 + r).cumprod()
@@ -85,6 +108,28 @@ def metrics(strat, bh, rf):
         return dict(cagr=cagr, vol=vol, sharpe=sharpe, sortino=sortino,
                     mdd=mdd, total=eq.iloc[-1] - 1, end10k=10000 * eq.iloc[-1])
     return {"strat": side(strat), "bh": side(bh)}
+
+
+def _protection(crises):
+    """Share of buy-and-hold's bear loss that the strategy avoided. HIGHER IS BETTER.
+
+    = 1 - (avg strategy loss / avg B&H loss) over this market's own >=20% declines.
+    0.47 means it gave up 47% less than holding did; 0 means it lost exactly as much;
+    negative means it lost MORE. Stated this way (user, 2026-08-02) so it runs the
+    same direction as profit vs B&H - both larger-is-better - rather than one column
+    being good at 0.7 and the other bad at 0.7.
+
+    Reported as 1 - ratio rather than the reciprocal: 1/ratio renders HK0939 as 33x,
+    which is unreadable, while this is bounded and says plainly how much was avoided.
+
+    Ratio of averages, not average of ratios: a single shallow episode where B&H fell
+    2% would otherwise dominate the mean through its tiny denominator.
+    """
+    if not crises:
+        return None
+    bh = sum(c["bh"] for c in crises) / len(crises)
+    st = sum(c["strat"] for c in crises) / len(crises)
+    return None if bh == 0 else 1.0 - st / bh
 
 
 def build_trades(df):
@@ -164,42 +209,66 @@ def main(sym, variant="V6"):
         else:
             i += 1
 
+    # ---- Crisis table, rebuilt on EACH MARKET'S OWN episodes (2026-08-01, user) ----
+    # It used to walk a FIXED, NDX-derived calendar of crisis windows and find the worst
+    # decline inside each. Two things were wrong with that for non-US markets:
+    #   1. the window BOUNDARIES are US dates, so a market that topped earlier had its
+    #      decline truncated - Hang Seng peaked Jan 2018 and bottomed Oct 2022, but the
+    #      calendar chopped that single -56% slide into three separate rows, each
+    #      starting long after the real peak, making the signal look far quicker than it
+    #      was (2 days instead of 82);
+    #   2. a crisis specific to one market appears in no window at all, so it was
+    #      silently dropped.
+    # Now each market's own >=20% peak-to-trough episodes ARE the rows, and a known
+    # crisis name is attached when one overlaps. This is the same episode definition
+    # the Model tab's summary table uses, so the two pages finally agree.
+    def _own_episodes(close, thresh=0.20, win=504):
+        # The reference peak resets at a 2-YEAR rolling high, not an all-time high.
+        # With all-time highs, a market that takes years to recover swallows the next
+        # crash whole: NDX peaked in 2000, bottomed 2002 and only regained that level in
+        # Nov 2015, so the 2007-09 GFC (-54%) disappeared from its table entirely.
+        # Must match v11_metrics.episodes(), which feeds the Model tab's summary.
+        out, peak, pi, trough, ti = [], close.iloc[0], close.index[0], np.inf, None
+        ref = close.rolling(win, min_periods=1).max()
+        for i_, (d_, p_) in enumerate(close.items()):
+            if p_ >= ref.iloc[i_] - 1e-12:
+                if ti is not None and (peak - trough) / peak >= thresh:
+                    out.append((pi, ti, trough / peak - 1))
+                peak, pi, trough, ti = p_, d_, np.inf, None
+            elif p_ < trough:
+                trough, ti = p_, d_
+        if ti is not None and (peak - trough) / peak >= thresh:
+            out.append((pi, ti, trough / peak - 1))
+        return out
+
+    def _label(peak_date, trough_date):
+        """Name the episode after whichever known crises it overlaps."""
+        hits = [nm for nm, a_, b_ in CRISES_BY_SYMBOL.get(base, CRISES)
+                if pd.Timestamp(a_) <= trough_date and pd.Timestamp(b_) >= peak_date]
+        if not hits:
+            return f"{peak_date.year} decline"          # market-specific, no US analogue
+        return hits[0] if len(hits) == 1 else f"{hits[0]} → {hits[-1]}"
+
     crises = []
-    for name, a, b in CRISES_BY_SYMBOL.get(base, CRISES):
-        sl = df.loc[a:b]
-        if sl.empty:
-            continue
-        roll_max = sl["close"].cummax()
-        dd = sl["close"] / roll_max - 1
-        trough_date = dd.idxmin()
-        peak_date = sl["close"].loc[:trough_date].idxmax()
+    for peak_date, trough_date, depth in _own_episodes(df["close"]):
         pk = df.loc[peak_date:trough_date]
+        if len(pk) < 5:
+            continue
         bh_dd = float((1 + pk["bh_ret"]).cumprod().iloc[-1] - 1)
         st_dd = float((1 + pk["strat_ret"]).cumprod().iloc[-1] - 1)
         pct_out = float((pk["pos"] == 0).mean())
-        peak_idx, trough_idx = df.index.get_loc(peak_date), df.index.get_loc(trough_date)
-        b_ts = df.index[df.index <= pd.Timestamp(b)].max() if len(df.index[df.index <= pd.Timestamp(b)]) else None
-        search = df.loc[peak_date:b]
-        out_days = search.index[search["pos"] == 0]
-        exit_run = None
-        if len(out_days):
-            target = peak_date if out_days[0] == peak_date else out_days[0]
-            for r_start, r_end in out_runs:
-                if r_start <= target <= r_end:
-                    exit_run = (r_start, r_end)
-                    break
-        if exit_run is not None:
-            exit_lag = df.index.get_loc(exit_run[0]) - peak_idx
-            candidates = [df.index.get_loc(r_end) + 1 for r_start, r_end in out_runs
-                          if exit_run[0] <= r_start <= b_ts and df.index.get_loc(r_end) + 1 < n]
-            if candidates:
-                reentry_idx = min(candidates, key=lambda x: abs(x - trough_idx))
-                reentry_lag = reentry_idx - trough_idx
-            else:
-                reentry_lag = None
-        else:
-            exit_lag = reentry_lag = None
-        crises.append(dict(name=name, start=a, end=b,
+        peak_idx = df.index.get_loc(peak_date)
+        trough_idx = df.index.get_loc(trough_date)
+        # exit lag: trading days from THIS MARKET'S peak to the first day out of the
+        # market; re-entry lag: from its trough to the first day back in. Identical
+        # definition to v11_metrics.timing(), which feeds the summary table.
+        w = pk[pk["pos"] == 0]
+        exit_lag = int(df.index.get_loc(w.index[0]) - peak_idx) if len(w) else None
+        after = df.loc[trough_date:]
+        back = after[after["pos"] == 1]
+        reentry_lag = int(df.index.get_loc(back.index[0]) - trough_idx) if len(back) else None
+        crises.append(dict(name=_label(peak_date, trough_date),
+                           start=str(peak_date.date()), end=str(trough_date.date()),
                            peak=str(peak_date.date()), trough=str(trough_date.date()),
                            bh=bh_dd, strat=st_dd,
                            exit_lag_days=exit_lag, reentry_lag_days=reentry_lag,
@@ -240,10 +309,14 @@ def main(sym, variant="V6"):
         med_dur=(float(np.median(durs)) if len(durs) else None),
         max_dur=(int(durs.max()) if len(durs) else None),
         **hazard, trade=trade,
-        p_bear=(float(df["p_bear"].iloc[-1]) if "p_bear" in df else None),
-        p_bear_1w=(float(df["p_bear"].iloc[-6]) if "p_bear" in df and len(df) > 6 else None),
-        p_bear_2w=(float(df["p_bear"].iloc[-11]) if "p_bear" in df and len(df) > 11 else None),
-        p_bear_1m=(float(df["p_bear"].iloc[-22]) if "p_bear" in df and len(df) > 22 else None),
+        # NaN must become JSON null, not NaN: the template's flip-risk light tests
+        # `pBear == null` to blank itself, and NaN passes that test in JS, yielding a
+        # displayed "NaN%". Variants that legitimately have no p_bear (V13's VM
+        # markets, whose alarm level is not a probability) rely on this.
+        p_bear=_num(df["p_bear"].iloc[-1] if "p_bear" in df else None),
+        p_bear_1w=_num(df["p_bear"].iloc[-6] if "p_bear" in df and len(df) > 6 else None),
+        p_bear_2w=_num(df["p_bear"].iloc[-11] if "p_bear" in df and len(df) > 11 else None),
+        p_bear_1m=_num(df["p_bear"].iloc[-22] if "p_bear" in df and len(df) > 22 else None),
     )
 
     eq_s = (1 + df["strat_ret"]).cumprod() * 10000
@@ -263,7 +336,14 @@ def main(sym, variant="V6"):
         start=str(df.index[0].date()), end=str(df.index[-1].date()),
         train_start=str(train_start.date()), training_crises=training_crises,
         current_state="bull" if df["state"].iloc[-1] == 0 else "bear",
-        current_pos="in" if df["pos"].iloc[-1] == 1 else "out",
+        # WHAT YOU HOLD NOW, i.e. after the last bar's close - not the position DURING
+        # that bar. df["pos"] is bar-level: pos[t] covers close[t-1] -> close[t], so
+        # pos[-1] says whether you were invested across the final day, which is a
+        # different question. The trade at close[T] is decided by state[T-1], so the
+        # holding after that close is state[-2]. (Found 2026-08-02: ARKQ turned bear on
+        # 07-30 and therefore sold at 07-31's close, yet the tab still read "in".)
+        current_pos=("in" if (df["state"].iloc[-2] == 0) else "out")
+                    if len(df) > 1 else ("in" if df["state"].iloc[-1] == 0 else "out"),
         last_close=float(df["close"].iloc[-1]),
         dates=[str(d.date()) for d in df.index],
         close=[round(float(v), 2) for v in df["close"]],
@@ -272,7 +352,16 @@ def main(sym, variant="V6"):
         eq_strat=[round(float(v), 2) for v in eq_s],
         eq_bh=[round(float(v), 2) for v in eq_b],
         panels=panels, trades=trades, crises=crises, signal=signal,
-        lam_by_year={str(k): float(v) for k, v in lam_by_year.items()},
+        # LOSS vs B&H: average BBM loss / average B&H loss across THIS market's own
+        # >=20% declines. Computed here, from the very list the crisis table on the
+        # tab is rendered from, so the summary and the tab can never disagree.
+        #
+        # This REPLACES "protection", which was the single worst drawdown only and
+        # systematically flattered: NVDA read +44.5% protection off the 2008 crash
+        # while its median episode was +0.0% and it never exited in 6 of 14 bears
+        # (user, 2026-08-02). Averaging over every episode removes that.
+        protection_vs_bh=_protection(crises),
+        lam_by_year={str(k): _num(v) for k, v in lam_by_year.items()},
     )
     with open(os.path.join(RESULTS_DIR, f"payload_{sym}_{variant}.json"), "w") as f:
         json.dump(payload, f)

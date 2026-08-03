@@ -9,11 +9,24 @@
 !/scripts
 /scripts/*
 !/scripts/update_data.py
+!/scripts/splice_hk9988.py
 !/scripts/build_regimes.py
-!/scripts/build_regimes_v7.py
 !/scripts/build_payloads.py
 !/scripts/build_dashboard.py
 !/scripts/combo_v2.py
+!/scripts/build_v11.py
+!/scripts/build_boards.py
+!/scripts/refresh_v13_all.py
+!/scripts/rebuild_daily.py
+!/scripts/configs.py
+!/scripts/decode.py
+!/scripts/cycle_feats.py
+!/scripts/ma_family.py
+!/scripts/final_config.py
+!/scripts/raw_signed.py
+!/scripts/rescore.py
+!/scripts/v11_metrics.py
+!/scripts/vm_calibrate.py
 
 !/dashboard
 /dashboard/*
@@ -26,19 +39,16 @@
 
 !/data
 /data/*
-!/data/ndx.csv
-!/data/gspc.csv
-!/data/hsi.csv
-!/data/hscei.csv
-!/data/ks11.csv
-!/data/nikkei.csv
-!/data/ftse.csv
-!/data/gold.csv
-!/data/arkq.csv
-!/data/msft.csv
-!/data/nvda.csv
-!/data/irx.csv
+!/data/*.csv
 !/data/JM_history.xlsx
+
+# Fitted JumpModel cache for the v11/v16 pipeline (scaler+model+lambda per
+# market-year, keyed on the training data itself). Committed so CI only ever
+# does warm inference; a new fit is expected only at the January rollover.
+!/fitcache
+/fitcache/*
+!/fitcache/*.pkl
+!/fitcache/*.json
 
 !/results
 /results/*

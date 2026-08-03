@@ -24,6 +24,11 @@ variant = "V6"
 if args and args[0].startswith("--variant="):
     variant = args[0].split("=", 1)[1]
     args = args[1:]
+# Which board this page IS - drives the cross-board nav's current-item highlight.
+board = ""
+if args and args[0].startswith("--board="):
+    board = args[0].split("=", 1)[1]
+    args = args[1:]
 out_path = args[0]
 markets = args[1:]
 
@@ -52,6 +57,7 @@ if os.path.exists(hist_path):
 html = tpl.replace("__PAYLOAD_JSON__", json.dumps(data))
 html = html.replace("__HISTORY_JSON__", json.dumps(history))
 html = html.replace("__BUILT_AT_ISO__", datetime.now(timezone.utc).isoformat())
+html = html.replace("__BOARD_NAME__", board)
 html = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         '</head>\n<body>\n' + html + '\n</body>\n</html>\n')

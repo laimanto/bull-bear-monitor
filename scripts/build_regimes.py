@@ -91,9 +91,54 @@ SYMBOLS = {
     "NIKKEI": dict(etf="nikkei.csv", index="nikkei.csv", etf_start="1985-01-02", first_test=2010),
     "FTSE":   dict(etf="ftse.csv",   index="ftse.csv",   etf_start="1985-01-02", first_test=2004),
     "GOLD":   dict(etf="gold.csv",   index="gold.csv",   etf_start="2000-08-30", first_test=2014),
-    "ARKQ":   dict(etf="arkq.csv",   index="arkq.csv",   etf_start="2014-09-30", first_test=2021),
+    "ARKQ":   dict(etf="arkq.csv",   index="arkq.csv",   etf_start="2014-09-30", first_test=2019),
     "MSFT":   dict(etf="msft.csv",   index="msft.csv",   etf_start="1986-03-13", first_test=1999),
     "NVDA":   dict(etf="nvda.csv",   index="nvda.csv",   etf_start="1999-01-22", first_test=2003),
+    # --- US tech dashboard (added 2026-08-01): the Magnificent 7 as INDIVIDUAL names
+    # (user's choice, not a basket), plus Micron and SMH.
+    # first_test is set ~5-6 years after each listing: the walk-forward needs roughly
+    # 2 years to fit plus a 3-year validation window before its first honest call.
+    # SMH stands in for .SOX - Yahoo reports ZERO volume on ^SOX for 7,956 of 8,115
+    # days, and both models use volume features, so the index itself cannot be fitted.
+    "AAPL":   dict(etf="aapl.csv",   index="aapl.csv",   etf_start="1985-01-02", first_test=1999),
+    "GOOGL":  dict(etf="googl.csv",  index="googl.csv",  etf_start="2004-08-19", first_test=2010),
+    "AMZN":   dict(etf="amzn.csv",   index="amzn.csv",   etf_start="1997-05-15", first_test=2003),
+    "META":   dict(etf="meta.csv",   index="meta.csv",   etf_start="2012-05-18", first_test=2017),
+    "TSLA":   dict(etf="tsla.csv",   index="tsla.csv",   etf_start="2010-06-29", first_test=2015),
+    "MU":     dict(etf="mu.csv",     index="mu.csv",     etf_start="1985-01-02", first_test=1999),
+    "SMH":    dict(etf="smh.csv",    index="smh.csv",    etf_start="2000-06-05", first_test=2006),
+    # --- HK dashboard (2026-08-02). first_test is 5y past each name's VOL_START below.
+    "HK0005": dict(etf="hk0005.csv", index="hk0005.csv", etf_start="2000-01-03", first_test=2010),
+    "HK0388": dict(etf="hk0388.csv", index="hk0388.csv", etf_start="2000-06-27", first_test=2014),
+    "HK0700": dict(etf="hk0700.csv", index="hk0700.csv", etf_start="2004-06-16", first_test=2010),
+    "HK0941": dict(etf="hk0941.csv", index="hk0941.csv", etf_start="2000-01-04", first_test=2010),
+    "HK0939": dict(etf="hk0939.csv", index="hk0939.csv", etf_start="2005-10-27", first_test=2016),
+    "HK1800": dict(etf="hk1800.csv", index="hk1800.csv", etf_start="2006-12-15", first_test=2014),
+    "HK1810": dict(etf="hk1810.csv", index="hk1810.csv", etf_start="2018-07-09", first_test=2023),
+    # Alibaba: BABA (NYSE, from 2014-09) spliced to 9988.HK at its 2019-11-26 HK listing.
+    # Same company, same shares - weekly return correlation 0.884 and a stable
+    # 0.97-1.02 price ratio across the overlap. The daily correlation looks low (0.53)
+    # only because HK closes at 04:00 ET, before the US session opens.
+    # 11.9 years instead of 6.7. See hk9988_long.csv for how the join is anchored.
+    "HK9988": dict(etf="hk9988_long.csv", index="hk9988_long.csv",
+                   etf_start="2014-09-19", first_test=2020),
+    # BABA as its own market - the US listing, one continuous series, no splice.
+    # Kept alongside HK9988 to test whether the splice costs anything.
+    "BABA":   dict(etf="baba.csv",   index="baba.csv",   etf_start="2014-09-19", first_test=2020),
+    # --- Commodity & crypto (2026-08-02). GOLD already exists above.
+    # WTI uses the USO ETF, not CL=F: the CL=F front-month settled at -$37.63 on
+    # 2020-04-20, which makes pct_change (-306%) and any compounded equity meaningless
+    # for a long-only backtest - capture came out at -2.503 before this swap.
+    # SILVER uses the SLV ETF, not SI=F: silver futures carry 9-13% zero-volume days
+    # even in recent years, which the volume features cannot survive. WTI keeps the
+    # CL=F future (only 0.2% zero-volume).
+    # BTC/ETH CSVs are truncated to WEEKDAYS - the pipeline annualises on 252 bars and
+    # charges the cash leg irx/252 per bar, so feeding 365 bars/yr would overstate the
+    # risk-free leg by ~1.45x. Weekend moves still land in the Fri->Mon return.
+    "SILVER": dict(etf="silver.csv", index="silver.csv", etf_start="2006-04-28", first_test=2012),
+    "WTI":    dict(etf="wti.csv",    index="wti.csv",    etf_start="2006-04-10", first_test=2012),
+    "BTC":    dict(etf="btc.csv",    index="btc.csv",    etf_start="2014-09-17", first_test=2019),
+    "ETH":    dict(etf="eth.csv",    index="eth.csv",    etf_start="2017-11-09", first_test=2023),
 }
 
 # Volume-clean truncation - Yahoo's volume data is a hard zero-gap (data
@@ -101,6 +146,13 @@ SYMBOLS = {
 VOL_START = {
     "HSI": "2002-01-01", "HSCEI": "2001-10-17", "NIKKEI": "2002-06-10",
     "FTSE": "1999-01-04", "GOLD": "2008-01-01",
+    # HK single names (2026-08-02): each set to the first year after which every later
+    # year carries <3% zero-volume days. Yahoo's early HK volume is patchy - HKEX
+    # (0388) alone had 52 zero-volume days in 2008.
+    "HK0005": "2005-01-01", "HK0388": "2009-01-01", "HK0700": "2005-01-01",
+    "HK0941": "2005-01-01", "HK0939": "2011-01-01", "HK1800": "2009-01-01",
+    "HK1810": "2018-07-09", "HK9988": "2014-09-19",
+    "BABA": "2014-09-19", "SILVER": "2006-04-28", "WTI": "2006-04-10", "BTC": "2014-09-17", "ETH": "2017-11-09",
 }
 
 # v6 decode parameters

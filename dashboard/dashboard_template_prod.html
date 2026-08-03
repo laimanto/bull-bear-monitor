@@ -110,6 +110,19 @@
     box-shadow: 0 4px 14px rgba(0,0,0,0.12); font-variant-numeric: tabular-nums;
   }
   .hint { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
+
+  /* Sits on the title row, so it needs no label of its own - next to a heading the
+     pills are self-explanatory, and a word there crowds a line already shared with
+     the title and the build stamp. */
+  .titlegrp { display:flex; align-items:center; gap:10px; flex-wrap:wrap; row-gap:6px; }
+  .boardnav { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .boardnav a, .boardnav span.here { font-size:11.5px; padding:3px 9px; border-radius:7px;
+    border:1px solid var(--border); text-decoration:none; white-space:nowrap; }
+  .boardnav a { color:var(--muted); }
+  .boardnav a:hover { color:var(--text); border-color:var(--accent); }
+  .boardnav span.here { color:#fff; background:var(--accent); border-color:var(--accent);
+    font-weight:650; }
+  .boardnav a::after { content:" \2197"; opacity:.55; font-size:10px; }
   .tblwrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
   th, td { padding: 7px 9px; text-align: right; border-bottom: 1px solid var(--border); font-size: 12.5px; white-space: nowrap; }
@@ -137,11 +150,12 @@
   .roibar:hover .col { filter: brightness(1.2); }
   .roibaraxis { border-top: 1px solid var(--border); margin-top: 0; padding-top: 5px; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
   @media (max-width: 720px) { .chart-box { height: 380px; } body { padding: 12px; } }
+  td.c,th.c{text-align:center;white-space:nowrap}
 </style>
 
 <div class="wrap">
   <div class="head">
-    <h1>Bull Bear Monitor</h1>
+    <div class="titlegrp"><h1>Bull Bear Monitor</h1><div class="boardnav" id="boardnav"></div></div>
     <div class="stamp" id="stamp"></div>
   </div>
   <div class="sub" id="sub"></div>
@@ -165,8 +179,75 @@ const cls = x => x >= 0 ? "pos" : "neg";
 const dShort = s => { const d = new Date(s + "T00:00:00"); return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); };
 
 // ---------- header ----------
+const V13_ALL = [{"m": "NDX", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 27.6, "hist": 40.8, "need": 13.3, "auc": 0.794, "profit": 2.559, "out": 0.1659, "fl": 3.0, "hold": 84, "n": 6, "miss": 3, "ex": 41, "re": 10}, {"m": "SPX", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.731, "profit": 0.831, "out": 0.1584, "fl": 1.5, "hold": 169, "n": 4, "miss": 0, "ex": 58, "re": 40}, {"m": "HSI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 24.6, "need": 8.0, "auc": 0.627, "profit": 0.923, "out": 0.2594, "fl": 3.5, "hold": 69, "n": 4, "miss": 0, "ex": 64, "re": 50}, {"m": "KOSPI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 24.6, "hist": 29.6, "need": 5.1, "auc": 0.625, "profit": 0.611, "out": 0.1704, "fl": 2.9, "hold": 84, "n": 7, "miss": 0, "ex": 76, "re": 37}, {"m": "NIKKEI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 24.1, "need": 7.6, "auc": 0.613, "profit": 0.425, "out": 0.1902, "fl": 5.0, "hold": 48, "n": 5, "miss": 0, "ex": 12, "re": 29}, {"m": "FTSE", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 22.6, "hist": 27.6, "need": 5.0, "auc": 0.583, "profit": 0.742, "out": 0.1553, "fl": 1.0, "hold": 238, "n": 3, "miss": 0, "ex": 122, "re": 100}, {"m": "AAPL", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.696, "profit": 0.296, "out": 0.2259, "fl": 4.0, "hold": 62, "n": 14, "miss": 0, "ex": 28, "re": 17}, {"m": "ARKQ", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 7.6, "hist": 11.8, "need": 4.3, "auc": 0.682, "profit": 0.876, "out": 0.3843, "fl": 8.3, "hold": 30, "n": 5, "miss": 0, "ex": 8, "re": 13}, {"m": "META", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 9.6, "hist": 14.2, "need": 4.6, "auc": 0.681, "profit": 1.409, "out": 0.2638, "fl": 2.2, "hold": 109, "n": 6, "miss": 1, "ex": 53, "re": 62}, {"m": "AMZN", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 23.6, "hist": 29.2, "need": 5.6, "auc": 0.642, "profit": 0.296, "out": 0.1849, "fl": 2.6, "hold": 94, "n": 12, "miss": 5, "ex": 57, "re": 17}, {"m": "MU", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.636, "profit": 1.676, "out": 0.4242, "fl": 4.0, "hold": 62, "n": 19, "miss": 3, "ex": 27, "re": 31}, {"m": "GOOGL", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.9, "need": 5.4, "auc": 0.635, "profit": 0.405, "out": 0.2032, "fl": 5.6, "hold": 44, "n": 9, "miss": 1, "ex": 28, "re": 29}, {"m": "NVDA", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 22.6, "hist": 27.5, "need": 4.9, "auc": 0.633, "profit": 0.633, "out": 0.2403, "fl": 3.1, "hold": 80, "n": 14, "miss": 5, "ex": 22, "re": 22}, {"m": "MSFT", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 40.4, "need": 12.8, "auc": 0.625, "profit": 0.996, "out": 0.2266, "fl": 3.9, "hold": 64, "n": 8, "miss": 1, "ex": 57, "re": 31}, {"m": "TSLA", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 11.6, "hist": 16.1, "need": 4.5, "auc": 0.595, "profit": 0.198, "out": 0.4988, "fl": 2.3, "hold": 104, "n": 8, "miss": 2, "ex": 20, "re": 20}, {"m": "SMH", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 20.6, "hist": 26.2, "need": 5.6, "auc": 0.571, "profit": 0.49, "out": 0.0711, "fl": 2.5, "hold": 100, "n": 9, "miss": 3, "ex": 68, "re": 8}, {"m": "HK0939", "board": "Hong Kong", "mdl": "JM", "thin": false, "yrs": 10.6, "hist": 15.6, "need": 5.0, "auc": 0.807, "profit": 0.591, "out": 0.5751, "fl": 1.1, "hold": 200, "n": 3, "miss": 0, "ex": 0, "re": 58}, {"m": "HK9988", "board": "Hong Kong", "mdl": "VM", "thin": true, "yrs": 6.6, "hist": 11.9, "need": 5.3, "auc": 0.719, "profit": 2.109, "out": 0.4818, "fl": 6.5, "hold": 37, "n": 4, "miss": 0, "ex": 16, "re": 20}, {"m": "HK0388", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 12.6, "hist": 17.6, "need": 5.0, "auc": 0.645, "profit": 0.495, "out": 0.2993, "fl": 6.2, "hold": 39, "n": 4, "miss": 0, "ex": 13, "re": 34}, {"m": "HK0700", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.643, "profit": 0.491, "out": 0.2606, "fl": 3.8, "hold": 64, "n": 9, "miss": 1, "ex": 40, "re": 21}, {"m": "HK1810", "board": "Hong Kong", "mdl": "VM", "thin": true, "yrs": 3.6, "hist": 8.1, "need": 4.5, "auc": 0.612, "profit": 1.512, "out": 0.2797, "fl": 3.9, "hold": 58, "n": 5, "miss": 1, "ex": 28, "re": 4}, {"m": "HK0005", "board": "Hong Kong", "mdl": "JM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.588, "profit": 1.035, "out": 0.1063, "fl": 2.4, "hold": 100, "n": 5, "miss": 1, "ex": 194, "re": 11}, {"m": "HK0941", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.584, "profit": 0.732, "out": 0.1428, "fl": 2.9, "hold": 83, "n": 3, "miss": 0, "ex": 116, "re": 16}, {"m": "HK1800", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 12.6, "hist": 17.6, "need": 5.0, "auc": 0.581, "profit": 1.105, "out": 0.4149, "fl": 5.3, "hold": 46, "n": 6, "miss": 0, "ex": 11, "re": 28}, {"m": "BTC", "board": "Commodity & crypto", "mdl": "VM", "thin": false, "yrs": 7.6, "hist": 11.9, "need": 4.3, "auc": 0.624, "profit": 0.852, "out": 0.3765, "fl": 4.8, "hold": 53, "n": 7, "miss": 1, "ex": 44, "re": 12}, {"m": "GOLD", "board": "Commodity & crypto", "mdl": "JM", "thin": false, "yrs": 12.6, "hist": 18.6, "need": 6.0, "auc": 0.61, "profit": 0.543, "out": 0.5718, "fl": 4.9, "hold": 51, "n": 3, "miss": 1, "ex": 68, "re": 53}, {"m": "WTI", "board": "Commodity & crypto", "mdl": "JM", "thin": false, "yrs": 14.6, "hist": 20.3, "need": 5.7, "auc": 0.571, "profit": 3.494, "out": 0.1378, "fl": 3.6, "hold": 69, "n": 6, "miss": 3, "ex": 268, "re": 12}, {"m": "SILVER", "board": "Commodity & crypto", "mdl": "VM", "thin": false, "yrs": 14.6, "hist": 20.3, "need": 5.7, "auc": 0.531, "profit": 0.247, "out": 0.3217, "fl": 5.8, "hold": 43, "n": 5, "miss": 0, "ex": 13, "re": 23}, {"m": "ETH", "board": "Commodity & crypto", "mdl": "JM", "thin": true, "yrs": 3.6, "hist": 8.7, "need": 5.1, "auc": 0.488, "profit": 0.493, "out": 0.6556, "fl": 1.1, "hold": 187, "n": 3, "miss": 0, "ex": 46, "re": 53}];
+const V13_NAMES = {"HK0005": "HSBC", "HK0388": "HKEX", "HK0700": "Tencent", "HK0941": "China Mobile", "HK0939": "CCB", "HK1800": "China Comm Const", "HK1810": "Xiaomi", "HK9988": "Alibaba", "SMH": "SMH (semis)", "WTI": "WTI oil", "SILVER": "Silver", "GOLD": "Gold", "BTC": "Bitcoin", "ETH": "Ethereum"};
+// rows for THIS page only - the four boards share the V13 suffix, so the table is
+// selected by which markets are actually loaded, not by a variant string.
+// KEYS is Object.keys(DATA) = the order markets were passed to the builder = the tab
+// order. The metrics arrive sorted by AUC; re-sort so the table reads down in the same
+// order as the tabs (user, 2026-08-02).
+const V13_ORDER = KEYS.map(k => DATA[k].symbol);
+const V13_ROWS = V13_ALL.filter(d => V13_ORDER.includes(d.m))
+  .sort((a, b) => V13_ORDER.indexOf(a.m) - V13_ORDER.indexOf(b.m));
+const V13_BOARD = V13_ROWS.length ? V13_ROWS[0].board : "";
+// Signal strength: ONE rating per market, used by both the performance table and each
+// market's Signal tile. Built from the two measures that are actually placebo-tested -
+// does it DETECT (AUC), and does its PROTECTION survive re-timing. Capture is excluded
+// on purpose: it clears its placebo on almost no market, so folding it in would drag
+// every rating down without telling the markets apart.
+// Short-history markets are rated on the SAME basis - the rating is not the problem,
+// the length of the record behind it is, and that is carried as a remark.
+const V13_BYSYM = Object.fromEntries(V13_ALL.map(d => [d.m, d]));
+// Protection vs B&H is read off the PAYLOAD, not the metrics file: build_payloads computes it
+// from the very crisis list each tab renders, so summary and tab can never disagree.
+const V13_PAY = Object.fromEntries(KEYS.map(k => [DATA[k].symbol, DATA[k]]));
+const protOf = m => (V13_PAY[m] || {}).protection_vs_bh ?? null;
+function strengthOf(sym) {
+  // Signal strength = profit vs B&H + protection vs B&H, EQUALLY WEIGHTED, 0-4 each.
+  //
+  // Both columns run the SAME direction now - higher is better (user, 2026-08-02) -
+  // so they share one band helper and one colour direction. The protection cuts are
+  // the old loss cuts mirrored through 1-x, so no rating changes: presentation only.
+  //
+  // Bears missed was dropped: it correlated only +0.36 with protection, because
+  // missing a bear matters solely when it costs you - which protection already
+  // measures. NDX slept through 3 of 6 and still avoided 47% of the loss; the three
+  // it missed were shallow and fast. Counting both double-counted the same fact.
+  //
+  // AUC contributes no points - the score is money only. It sets a CEILING, graded
+  // rather than a single cut-off: weak detection should lower the rating in
+  // proportion, not fall off a cliff. A binary gate left ETH at Fair on an AUC of
+  // 0.488 - worse than a coin flip - purely because its protection looked tidy.
+  const d = V13_BYSYM[sym], prot = protOf(sym);
+  if (!d || prot == null) return null;
+  const band = (x, cuts) => {
+    for (let k = 0; k < cuts.length; k++) if (x >= cuts[k]) return 4 - k * 0.5;
+    return 0;
+  };
+  const sc = band(d.profit, [1.50, 1.20, 1.00, 0.90, 0.80, 0.65, 0.50, 0.35])
+           + band(prot,     [0.60, 0.50, 0.45, 0.40, 0.35, 0.28, 0.20, 0.10]);
+  const TIERS = [["Strong", 5.5, "var(--up)", 700], ["Good", 4.0, "var(--up)", 500],
+                 ["Fair", 2.5, "var(--amber)", 600], ["Weak", 1.0, "var(--down)", 500],
+                 ["Poor", 0, "var(--down)", 700]];
+  // AUC ceiling: >=0.65 may reach Strong, 0.60-0.65 Good, 0.55-0.60 Fair, 0.525-0.55
+  // Weak, below that Poor. 0.65 keeps a real gap above Good's 0.60 floor; at 0.60 the
+  // two ceilings coincide and nothing could ever be capped AT Good.
+  const ceil = d.auc >= 0.650 ? 0 : d.auc >= 0.600 ? 1 : d.auc >= 0.550 ? 2
+             : d.auc >= 0.525 ? 3 : 4;
+  let t = Math.max(TIERS.findIndex(x => sc >= x[1]), ceil);
+  const [label, , color, wt] = TIERS[t];
+  const short = d.thin ? ` &middot; only ${d.yrs}y of forecast so far` : "";
+  const NOTE = { Strong: "beats holding and protects strongly in bears",
+                 Good: "close to holding, and clearly protective in bears",
+                 Fair: "cushions bears but gives up upside",
+                 Weak: "little advantage over simply holding",
+                 Poor: "no useful edge on either profit or protection" };
+  return { label, color, weight: wt, thin: d.thin, score: sc, note: NOTE[label] + short };
+}
+
 const first = DATA[KEYS.find(k => !DATA[k].ref_only)];
-const tagOf = r => "JM_" + (r.variant ?? "BL");
+const BBM = new Set(["V13", "V14", "V15", "V16"]);   // variants that ARE the composite Bull Bear Model
+const tagOf = r => (BBM.has(r.variant) ? "BBM_" : "JM_") + (r.variant ?? "BL");
 // The tile always displays P(flip AWAY from the displayed signal): p_bear is
 // the raw bear-proximity (0% = bull centroid, 100% = bear centroid), so while
 // the displayed signal is BULL the flip-to-bear chance IS p_bear, but while
@@ -207,15 +288,36 @@ document.getElementById("sub").innerHTML =
 const tabsEl = document.getElementById("tabs");
 const panelsEl = document.getElementById("panels");
 const charts = {};
-function addTab(id, label, outFlag, flipColor) {
+function addTab(id, label, outFlag, flipColor, pending) {
+  // outFlag is derived from the SIGNAL, not the position (fixed 2026-08-02, user).
+  // It used to read `current_pos`, so on ARKQ - whose signal turned bear on 07-30 but
+  // whose sell executes two days later - the tab showed a green dot beside a BEAR
+  // reading. `pending` marks exactly that gap: the signal has flipped, the trade has
+  // not executed yet. Rendered hollow rather than as a third colour.
   const b = document.createElement("button");
   b.className = "tab"; b.dataset.target = id;
-  const pip1 = outFlag == null ? "" : `<span class="pip ${outFlag ? "outp" : "in"}"></span>`;
+  const pip1 = outFlag == null ? "" :
+    `<span class="pip ${outFlag ? "outp" : "in"}"
+       title="${outFlag ? "Signal: BEAR" : "Signal: BULL"}${pending ? " - executes at the next day’s close" : ""}"></span>`;
   const pip2 = flipColor ? `<span class="pip" style="background:${flipColor}"></span>` : "";
   b.innerHTML = pip1 + pip2 + label;
   b.onclick = () => activate(id);
   tabsEl.appendChild(b);
 }
+
+  // Board switcher. The current board renders as a plain label, the others as links
+  // that open in a new tab.
+  (() => {
+    const BOARD = "__BOARD_NAME__";
+    const items = [["Global indexes", "index.html"], ["US tech", "us.html"], ["Hong Kong", "hk.html"], ["Commodity & crypto", "commodity.html"]];
+    const el = document.getElementById("boardnav");
+    if (!el) return;
+    el.innerHTML = items.map(([name, href]) =>
+      name === BOARD ? `<span class="here">${name}</span>`
+                     : `<a href="${href}" target="_blank" rel="noopener">${name}</a>`
+    ).join("");
+  })();
+
 const modelCardsBySuffix = {};
 // Why a market's training starts later than its price history: Yahoo's
 // volume data has a hard gap (all-zero) before these markets' cutover dates,
@@ -268,7 +370,9 @@ function buildPanel(k, r) {
   const TAG = tagOf(r), SUFFIX = r.variant ?? "BL";
   const sig = r.signal ?? {};
   const zone = flipZone(r.current_state, sig.p_bear);
-  addTab(k, SUFFIX === "BL" ? `${r.symbol}_${SUFFIX}` : r.symbol, !inMkt, zone ? zone.color : null);
+  const sigBear = r.current_state === "bear";
+  addTab(k, SUFFIX === "BL" ? `${r.symbol}_${SUFFIX}` : r.symbol, sigBear,
+         zone ? zone.color : null, sigBear === inMkt);
   const dataStart = (r.train_start ? dShort(r.train_start) : dShort(r.start)) + (TRAIN_NOTE[r.symbol] ?? "");
   const p = document.createElement("div");
   p.className = "panel"; p.id = "panel-" + k;
@@ -337,9 +441,16 @@ function buildPanel(k, r) {
         <div class="note">at exit, vs that trade's highest close</div></div>`;
 
   const tiles = `<div class="card"><h2>Signal</h2><div class="tiles onerow" style="margin-bottom:0">
-    <div class="tile"><div class="lbl">Signal</div>
-      <div class="val ${r.current_state === "bull" ? "pos" : "neg"}">${r.current_state.toUpperCase()}</div>
-      <div class="note">since ${dShort(r.dates[sinceIdx])} · ${sig.regime_age ?? LAST - sinceIdx + 1}&thinsp;trading days</div></div>
+    ${(() => { const st = strengthOf(r.symbol); return `
+    <div class="tile"><div class="lbl" style="display:flex;justify-content:space-between;gap:8px">
+      <span>Signal</span>${st ? `<span>Strength</span>` : ""}</div>
+      <div class="val ${r.current_state === "bull" ? "pos" : "neg"}"
+        style="display:flex;justify-content:space-between;gap:8px">
+        <span>${r.current_state.toUpperCase()}</span>${st
+          ? `<span style="color:${st.color}">${st.label}${st.thin ? `<span style="vertical-align:super;font-size:10px">&nbsp;*</span>` : ""}</span>` : ""}</div>
+      <div class="note">since ${dShort(r.dates[sinceIdx])} · ${sig.regime_age ?? LAST - sinceIdx + 1}&thinsp;trading days</div>
+      ${sigBear === inMkt ? `<div class="note" style="color:var(--amber)">
+        still ${inMkt ? "invested" : "in cash"} &mdash; the trade executes at the <b>next day&rsquo;s close</b></div>` : ""}</div>`; })()}
     ${flipTile}
     ${tradeTiles}
   </div>
@@ -379,7 +490,8 @@ function buildPanel(k, r) {
       <th>Max drop</th><th>Total ROI</th><th>vs B&amp;H</th><th>Trades</th>
     </tr></thead><tbody>${eraRows}</tbody>
     <tfoot><tr><td colspan="10" class="l">
-      Net of 10&thinsp;bps switch costs, 1-day execution delay; cash earns 3-month T-bills while out.
+      Net of 10&thinsp;bps switch costs; the signal is read at the close and the trade is
+      executed at the <b>next day&rsquo;s close</b>. Cash earns 3-month T-bills while out.
       <b>vs B&amp;H</b> = final wealth ÷ buy-and-hold's final wealth.
     </td></tr></tfoot></table></div></div>`;
 
@@ -472,16 +584,16 @@ function buildPanel(k, r) {
   }
   const crisisCard = `<div class="card"><h2>Crisis Performance</h2>
     <div class="caveat"><b style="color:var(--text)">${r.full_name}</b>,
-      Jump Model ${SUFFIX === "BL" ? "baseline" : SUFFIX === "V7" ? "v8" : SUFFIX.toLowerCase()} · trained from <b>${dataStart}</b> ·
+      ${BBM.has(SUFFIX) ? "Bull Bear Model" : "Jump Model"} ${SUFFIX === "BL" ? "baseline" : SUFFIX === "V7" ? "v8" : SUFFIX === "V9" ? "v9" : SUFFIX === "V10" ? "v10" : SUFFIX === "V11" ? "v11" : SUFFIX === "V12" ? "v12" : SUFFIX.toLowerCase()} · trained from <b>${dataStart}</b> ·
       tested ${dShort(r.start)} → ${dShort(r.end)}${U === "" ? " · index points, dividends excluded on both legs" : ""}${inMkt ? "" : ` · <b style="color:var(--down)">currently OUT</b>`}</div>
     <div class="tblwrap">
     <table><thead><tr>
       <th class="l">Crisis</th><th class="l">Peak</th><th class="l">Trough</th>
-      <th>B&amp;H</th><th>${TAG}</th><th>Exit delay</th><th>Re-entry delay</th><th>% of window out</th><th>Trades</th>
+      <th>B&amp;H</th><th>${TAG}</th><th>Exit lag</th><th>Re-entry lag</th><th>% of window out</th><th>Trades</th>
     </tr></thead><tbody>${crows}</tbody>
     <tfoot><tr><td colspan="9" class="l">
-      Peak → trough windows. <b>Exit delay</b> = trading days after the peak until the first day out;
-      <b>re-entry delay</b> = trading days after the trough until back in.
+      Peak → trough windows are this market’s <b>own</b> ≥20% peak-to-trough declines. <b>Exit lag</b> = trading days after the peak until the first day out (negative = already out before the peak);
+      <b>Re-entry lag</b> = trading days after the trough until back in. The Model tab’s summary counts the same episodes, so the two agree.
       <b>% of window out</b> = share of the window spent in T-bills. <b>Trades</b> = round trips overlapping the window.
       Peak/trough are this market's own worst peak-to-trough decline within the window (not necessarily its
       global high/low) — a market that rallies net over a window can still show a real interior crash here.
@@ -505,33 +617,296 @@ function buildPanel(k, r) {
         • In <b>BULL</b> (flip-to-bear risk): <b style="color:var(--up)">GREEN</b> ≤40% · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--down)">RED</b> &gt;70%<br>
         • In <b>BEAR</b> (flip-to-bull chance): <b style="color:var(--down)">RED</b> ≤40% (deep in bear) · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--up)">GREEN</b> &gt;70% (recovery near)<br>
         • Shown as each tab's second dot and in the Signal tile</td></tr>`;
-  const vetoProb = SUFFIX === "V7"
-        ? "the combined bear-probability (Jump Model + VM, see the Ensemble row below)"
-        : "the model's own bear-probability";
-  const vetoBullet = !["V5", "V6", "V7"].includes(SUFFIX) ? "" :
-        `<br>• <b>Conviction veto (v5)</b>: a bear flip also needs ${vetoProb} ≥&thinsp;60% on the day it would publish — low-conviction bear alarms (historically false: the market averaged <b>+2.1%</b> over such skipped calls) are held back, retried daily, and still publish the moment conviction arrives (91% of genuine bear flips pass with zero delay)<br>
-        • Bull re-entries are deliberately NOT vetoed — at V-shaped bottoms the first rebound days are the most valuable of the cycle, and every re-entry filter tested paid 4–6% per episode there`;
-  const holdBullet = !["V6", "V7"].includes(SUFFIX) ? "" :
-        `<br>• <b>Minimum hold (v6)</b>: once the signal flips, it holds for at least <b>8 trading days</b> — a pending reversal is blocked, retried daily, and publishes the first day the hold expires if it still stands (delayed, never lost); if the pressure passes first, no flip appears at all<br>
-        • <b>Guarantee: no published signal ever reverses in under 8 trading days.</b> The flip-risk light keeps moving in real time during a hold, so a pending reversal shows as elevated risk on a stable signal`;
-  const refinedTag = { V5: ", refined v5", V6: ", refined v5–v6", V7: ", refined v5–v8" }[SUFFIX] ?? "";
-  const confirmRow = !["V4", "V5", "V6", "V7"].includes(SUFFIX) ? "" : `<tr><td class="l" style="font-weight:650">Signal confirmation — added (v4${refinedTag})</td>
+  // How a published signal is produced. Every condition, both directions.
+  const hasVeto  = ["V5","V6","V7","V9","V10"].includes(SUFFIX);
+  const hasHold  = ["V6","V7","V9","V10"].includes(SUFFIX);
+  const hasGate  = ["V4","V5","V6","V7","V9","V10","V11"].includes(SUFFIX);
+  const hasVM    = ["V7","V9","V10"].includes(SUFFIX);
+  const hasTrend = ["V9","V10"].includes(SUFFIX);
+  const yes = '<b style="color:var(--up)">✓</b>';
+  const no  = '<span style="color:var(--muted)">—</span>';
+  const ruleLine = (what, bear, bull) =>
+    `<tr><td class="l">${what}</td><td class="c">${bear}</td><td class="c">${bull}</td></tr>`;
+  const ruleRows = [
+    ruleLine("<b>Model call</b> — the jump model's own daily bull/bear reading",
+             "says BEAR", "says BULL"),
+    hasTrend ? (SUFFIX === "V10"
+       ? ruleLine("<b>Long-term trend</b> — close vs its level 3 or 6 months ago",
+                  "<b>either</b> below → BEAR", no + " no say in re-entry")
+       : ruleLine("<b>Long-term trend</b> — close vs its level 3 / 6 / 12 months ago",
+                  "<b>any one</b> below → BEAR", "all three must be above")) : "",
+    hasGate ? ruleLine("<b>Days of agreement</b> before the signal may change",
+             "<b>2</b> days", "<b>3</b> days") : "",
+    hasVeto ? ruleLine("<b>Conviction check</b> — " + (hasVM
+             ? "jump model + Volatility Model, averaged" : "the jump model's bear-probability"),
+             "must be <b>≥ 60%</b>", no + " never required") : "",
+    hasHold ? ruleLine("<b>Minimum hold</b> since the last change", "<b>8</b> trading days",
+             "<b>8</b> trading days") : "",
+    ruleLine("<b>Then trade</b>", "at the next day's close", "at the next day's close"),
+  ].filter(Boolean).join("");
+  const V11_DIAG = [{"m": "NDX", "auc": 0.804, "cap": 4.11, "prot": 0.5192, "out": 0.1423, "fl": 1.6, "hold": 154, "ex": 28, "re": 6, "n": 5, "miss": 3}, {"m": "SPX", "auc": 0.746, "cap": 0.842, "prot": 0.3731, "out": 0.1666, "fl": 1.2, "hold": 210, "ex": 60, "re": 85, "n": 4, "miss": 0}, {"m": "MSFT", "auc": 0.736, "cap": 0.264, "prot": 0.3872, "out": 0.5571, "fl": 2.8, "hold": 88, "ex": 46, "re": 42, "n": 5, "miss": 1}, {"m": "GOLD", "auc": 0.631, "cap": 0.609, "prot": 0.0543, "out": 0.5648, "fl": 5.3, "hold": 47, "ex": 68, "re": 80, "n": 3, "miss": 0}, {"m": "FTSE", "auc": 0.616, "cap": 0.886, "prot": 0.2675, "out": 0.1196, "fl": 0.7, "hold": 335, "ex": 98, "re": 80, "n": 3, "miss": 0}, {"m": "NVDA", "auc": 0.601, "cap": 1.192, "prot": 0.6518, "out": 0.1282, "fl": 3.2, "hold": 76, "ex": 25, "re": 6, "n": 11, "miss": 7}, {"m": "ARKQ", "auc": 0.592, "cap": 1.061, "prot": 0.4431, "out": 0.5935, "fl": 2.9, "hold": 82, "ex": 79, "re": 4, "n": 3, "miss": 2}, {"m": "NIKKEI", "auc": 0.553, "cap": 0.812, "prot": 0.2291, "out": 0.1013, "fl": 1.0, "hold": 238, "ex": 176, "re": 15, "n": 5, "miss": 2}, {"m": "HSI", "auc": 0.511, "cap": 0.499, "prot": -0.0455, "out": 0.1596, "fl": 1.3, "hold": 177, "ex": 157, "re": 44, "n": 3, "miss": 0}, {"m": "HSCEI", "auc": 0.51, "cap": 1.04, "prot": 0.4419, "out": 0.8611, "fl": 5.7, "hold": 42, "ex": 28, "re": 318, "n": 2, "miss": 0}, {"m": "KOSPI", "auc": 0.424, "cap": 0.52, "prot": 0.5607, "out": 0.6259, "fl": 0.7, "hold": 323, "ex": 21, "re": 490, "n": 7, "miss": 2}];
+  const diagCard = (SUFFIX === "V11") ? `<div class="card">
+    <h2>Signal behaviour by market</h2>
+    <div class="tblwrap wraptbl"><table>
+      <thead><tr>
+        <th class="l">Market</th><th class="c">AUC</th><th class="c">Capture</th>
+        <th class="c">Protection</th><th class="c">Time out</th><th class="c">Flips / yr</th>
+        <th class="c">Avg hold</th><th class="c">Exit lag</th><th class="c">Re-entry lag</th>
+        <th class="c">Bears missed</th>
+      </tr></thead>
+      <tbody>${V11_DIAG.map(d => {
+        const col = d.auc >= 0.70 ? "var(--up)" : d.auc < 0.55 ? "var(--down)" : "var(--amber)";
+        return `<tr>
+          <td class="l"><b>${d.m}</b></td>
+          <td class="c" style="color:${col};font-weight:650">${d.auc.toFixed(3)}</td>
+          <td class="c">${d.cap.toFixed(2)}&times;</td>
+          <td class="c">${(d.prot*100).toFixed(1)}%</td>
+          <td class="c">${(d.out*100).toFixed(0)}%</td>
+          <td class="c">${d.fl.toFixed(1)}</td>
+          <td class="c">${d.hold}d</td>
+          <td class="c">${d.ex === null ? "&mdash;" : d.ex + "d"}</td>
+          <td class="c">${d.re === null ? "&mdash;" : d.re + "d"}</td>
+          <td class="c">${d.miss} of ${d.n}</td>
+        </tr>`; }).join("")}</tbody></table></div>
+    <div class="caveat" style="margin-top:10px">
+      <b>AUC</b> is the state's agreement with that market's own &ge;20% bear markets.
+      The signal is binary, so this equals balanced accuracy &mdash; <b>0.50 is a coin flip</b>.
+      Green &ge;&thinsp;0.70, amber 0.55&ndash;0.70, red below 0.55.<br>
+      <b>Exit lag</b> counts trading days from an episode's peak until the signal leaves the
+      market; <b>re-entry lag</b> counts days from its trough until the signal returns. Both are
+      measured against each market's <i>own</i> drawdowns, not a fixed crisis calendar.<br>
+      <b>Capture</b> is final equity versus buy-and-hold. Read it together with <b>time out</b>:
+      where the signal sits in cash most of the time, capture above 1.00 can come from exposure
+      alone rather than timing, and an exposure-matched placebo is the only way to tell.
+    </div></div>` : "";
+
+  const V12_DIAG = [{"m": "NDX", "mdl": "JM", "auc": 0.804, "cap": 4.11, "capP": 100, "prot": 0.5192, "protP": 100, "out": 0.1423, "fl": 1.6, "hold": 154, "ex": 28, "re": 6, "n": 5, "miss": 3}, {"m": "SPX", "mdl": "JM", "auc": 0.746, "cap": 0.842, "capP": 69, "prot": 0.3731, "protP": 97, "out": 0.1666, "fl": 1.2, "hold": 210, "ex": 60, "re": 85, "n": 4, "miss": 0}, {"m": "ARKQ", "mdl": "VM", "auc": 0.654, "cap": 0.976, "capP": 80, "prot": 0.3646, "protP": 96, "out": 0.4208, "fl": 12.3, "hold": 20, "ex": 5, "re": 19, "n": 3, "miss": 0}, {"m": "HSI", "mdl": "VM", "auc": 0.624, "cap": 0.974, "capP": 58, "prot": 0.2501, "protP": 88, "out": 0.2563, "fl": 4.4, "hold": 56, "ex": 82, "re": 58, "n": 3, "miss": 0}, {"m": "FTSE", "mdl": "JM", "auc": 0.616, "cap": 0.886, "capP": 45, "prot": 0.2675, "protP": 98, "out": 0.1196, "fl": 0.7, "hold": 335, "ex": 98, "re": 80, "n": 3, "miss": 0}, {"m": "MSFT", "mdl": "VM", "auc": 0.616, "cap": 1.185, "capP": 93, "prot": 0.3377, "protP": 93, "out": 0.2166, "fl": 4.6, "hold": 54, "ex": 60, "re": 36, "n": 5, "miss": 0}, {"m": "NVDA", "mdl": "JM", "auc": 0.601, "cap": 1.192, "capP": 93, "prot": 0.6518, "protP": 99, "out": 0.1282, "fl": 3.2, "hold": 76, "ex": 25, "re": 6, "n": 11, "miss": 7}, {"m": "KOSPI", "mdl": "VM", "auc": 0.601, "cap": 0.53, "capP": 26, "prot": 0.2202, "protP": 88, "out": 0.1601, "fl": 3.1, "hold": 80, "ex": 70, "re": 37, "n": 7, "miss": 0}, {"m": "HSCEI", "mdl": "VM", "auc": 0.558, "cap": 0.944, "capP": 38, "prot": 0.3007, "protP": 92, "out": 0.283, "fl": 4.2, "hold": 58, "ex": 112, "re": 70, "n": 2, "miss": 0}, {"m": "NIKKEI", "mdl": "JM", "auc": 0.553, "cap": 0.812, "capP": 49, "prot": 0.2291, "protP": 94, "out": 0.1013, "fl": 1.0, "hold": 238, "ex": 176, "re": 15, "n": 5, "miss": 2}, {"m": "GOLD", "mdl": "VM", "auc": 0.505, "cap": 0.721, "capP": 22, "prot": 0.095, "protP": 94, "out": 0.1239, "fl": 6.4, "hold": 39, "ex": 65, "re": 1, "n": 3, "miss": 0}];
+  const diag12 = (SUFFIX === "V12") ? `<div class="card">
+    <h2>Signal behaviour by market</h2>
+    <div class="tblwrap wraptbl"><table>
+      <thead><tr>
+        <th class="l">Market</th><th class="c">Model</th><th class="c">AUC</th>
+        <th class="c">Capture</th><th class="c">vs&nbsp;placebo</th>
+        <th class="c">Protection</th><th class="c">vs&nbsp;placebo</th>
+        <th class="c">Time out</th><th class="c">Flips / yr</th><th class="c">Avg hold</th>
+        <th class="c">Exit lag</th><th class="c">Re-entry lag</th><th class="c">Bears missed</th>
+      </tr></thead>
+      <tbody>${V12_DIAG.map(d => {
+        const ac = d.auc >= 0.70 ? "var(--up)" : d.auc < 0.55 ? "var(--down)" : "var(--amber)";
+        const pc = p => p >= 95 ? "var(--up)" : p < 80 ? "var(--down)" : "var(--amber)";
+        const mc = d.mdl === "JM" ? "var(--accent)" : "var(--amber)";
+        return `<tr>
+          <td class="l"><b>${d.m}</b></td>
+          <td class="c" style="color:${mc};font-weight:650">${d.mdl}</td>
+          <td class="c" style="color:${ac};font-weight:650">${d.auc.toFixed(3)}</td>
+          <td class="c">${d.cap.toFixed(2)}&times;</td>
+          <td class="c" style="color:${pc(d.capP)}">${d.capP}%</td>
+          <td class="c">${(d.prot*100).toFixed(1)}%</td>
+          <td class="c" style="color:${pc(d.protP)};font-weight:650">${d.protP}%</td>
+          <td class="c">${(d.out*100).toFixed(0)}%</td>
+          <td class="c">${d.fl.toFixed(1)}</td>
+          <td class="c">${d.hold}d</td>
+          <td class="c">${d.ex === null ? "&mdash;" : d.ex + "d"}</td>
+          <td class="c">${d.re === null ? "&mdash;" : d.re + "d"}</td>
+          <td class="c">${d.miss} of ${d.n}</td>
+        </tr>`; }).join("")}</tbody></table></div>
+    <div class="caveat" style="margin-top:10px">
+      <b>Model</b> &mdash; <span style="color:var(--accent);font-weight:650">JM</span> the jump model,
+      <span style="color:var(--amber);font-weight:650">VM</span> the Volatility Model. Which one a
+      market uses is decided by the rule above, not by hand.<br>
+      <b>vs&nbsp;placebo</b> is the important column. It asks: of 300 random re-timings of this
+      market&rsquo;s <i>own</i> signal, how many did it beat? A circular shift keeps time-out and
+      run length identical, so it removes the advantage of simply sitting in cash more.
+      <b style="color:var(--up)">&ge;95%</b> is real timing skill; <b>~50%</b> is
+      indistinguishable from luck at that exposure.<br>
+      <b>Read capture and protection together with their placebo columns.</b> On this build
+      protection is skilful on 10 of 11 markets, but <b>capture is not</b> &mdash; only NDX
+      clears 95%. This system is evidenced as a <b>downside-protection</b> tool, not a
+      return-enhancement one.<br>
+      <b>Exit lag</b> counts trading days from an episode&rsquo;s peak to leaving the market;
+      <b>re-entry lag</b> from its trough to returning. Both are measured against each
+      market&rsquo;s <i>own</i> &ge;20% drawdowns, not a fixed crisis calendar.
+    </div></div>` : "";
+
+  const diagV13 = (BBM.has(SUFFIX) && V13_ROWS.length) ? `<div class="card">
+    <h2>Model performance &mdash; ${V13_BOARD}</h2>
+    <style>
+      .perftbl { width:100%; table-layout:fixed; line-height:1.15; }
+      .perftbl th, .perftbl td { padding:3px 4px; font-size:12px; white-space:normal;
+        overflow-wrap:anywhere; line-height:1.15; }
+      .perftbl th { font-size:9.5px; line-height:1.2; letter-spacing:.02em; padding-bottom:5px; }
+      .perftbl td.c, .perftbl th.c { text-align:center; }
+      .perftbl .pmain { display:block; line-height:1.1; margin:0; }
+      .perftbl .psub { display:block; font-size:9.5px; font-weight:650; margin:0; line-height:1.0; }
+      .perftbl .phint { display:block; font-weight:400; opacity:.6; font-size:8.5px;
+        text-transform:none; letter-spacing:0; margin-top:1px; }
+      /* column glossary: two columns, prose wraps, name column narrow and fixed */
+      .coldef { width:100%; table-layout:fixed; }
+      .coldef td { padding:4px 8px 4px 0; font-size:12px; line-height:1.45;
+        white-space:normal; vertical-align:top; text-align:left; }
+      .coldef td:first-child { width:110px; }
+      .perftbl col.mk { width:8.5%; } .perftbl col.md { width:8%; }
+      .perftbl col.nm { width:7.5%; } .perftbl col.wd { width:9.5%; }
+      .perftbl col.rb { width:9%; }
+    </style>
+    <table class="perftbl">
+      <colgroup><col class="mk"><col class="md"><col class="rb"><col class="nm"><col class="wd">
+        <col class="wd"><col class="nm"><col class="nm"><col class="nm"><col class="nm"><col class="nm">
+        <col class="nm"></colgroup>
+      <thead><tr>
+        <th class="l">Market</th><th class="c">Model</th>
+        <th class="c">Signal<br>strength<span class="phint">overall</span></th><th class="c">AUC</th>
+        <th class="c">Profit<br>vs B&amp;H<span class="phint">whole period</span></th>
+        <th class="c">Protection<br>vs B&amp;H<span class="phint">in bears</span></th>
+        <th class="c">Time out</th><th class="c">Flips /yr</th><th class="c">Avg hold</th>
+        <th class="c">Exit lag<span class="phint">from own peak</span></th>
+        <th class="c">Re-entry<span class="phint">from own trough</span></th>
+        <th class="c">Bears missed</th>
+      </tr></thead>
+      <tbody>${V13_ROWS.map(d => {
+        const ac = d.auc >= 0.70 ? "var(--up)" : d.auc < 0.55 ? "var(--down)" : "var(--amber)";
+        const isJM = d.mdl === "JM";
+        const bg = isJM ? "rgba(59,130,246,.13)" : "rgba(245,158,11,.15)";
+        const fg = isJM ? "var(--accent)" : "var(--amber)";
+        return `<tr class="${d.thin ? "thin" : ""}">
+          <td class="l"><b>${d.m}</b>${d.thin ? `<span style="color:var(--amber);vertical-align:super;font-size:10px"> *</span>` : ""}</td>
+          <td class="c"><span style="background:${bg};color:${fg};font-weight:700;
+            padding:2px 7px;border-radius:10px;font-size:10.5px;white-space:nowrap">
+            ${isJM ? "JM" : "VM"}</span></td>
+          ${(() => { const r = strengthOf(d.m);
+            if (!r) return `<td class="c" style="color:var(--muted)">&mdash;</td>`;
+            return `<td class="c" style="color:${r.color};font-weight:${r.weight}">${r.label}</td>`;
+          })()}
+          <td class="c" style="color:${ac};font-weight:650">${d.auc.toFixed(3)}</td>
+          ${(() => { const P = protOf(d.m);
+            // Both columns run the SAME way now - higher is better - so they share a
+            // colour direction. That was the point of the rename.
+            const pcol = d.profit >= 1.00 ? "var(--up)" : d.profit >= 0.80 ? "var(--amber)" : "var(--down)";
+            const qcol = P == null ? "var(--muted)" : P >= 0.35 ? "var(--up)" : P >= 0.20 ? "var(--amber)" : "var(--down)";
+            return `<td class="c" style="color:${pcol};font-weight:650">${d.profit.toFixed(2)}&times;</td>
+          <td class="c" style="color:${qcol};font-weight:650">${P == null ? "&mdash;" : (P * 100).toFixed(0) + "%"}</td>`;
+          })()}
+          <td class="c">${(d.out*100).toFixed(0)}%</td>
+          <td class="c">${d.fl.toFixed(1)}</td>
+          <td class="c">${d.hold}d</td>
+          <td class="c">${d.ex === null ? "&mdash;" : d.ex + "d"}</td>
+          <td class="c">${d.re === null ? "&mdash;" : d.re + "d"}</td>
+          <td class="c">${d.miss} of ${d.n}</td>
+        </tr>`; }).join("")}</tbody></table>
+    <div class="caveat" style="margin-top:10px">
+      ${V13_ROWS.some(d=>d.thin) ? `<b style="color:var(--amber)">* Short forecast
+      history.</b> The model needs about <b>5 years</b> of data before it can make its first
+      call, so a market&rsquo;s track record is its history minus five years. These rows are
+      rated on the same basis as every other &mdash; there is just less of it behind them.
+      <div class="tblwrap" style="margin:8px 0 4px"><table style="width:auto">
+        <thead><tr><th class="l">Market</th><th class="c">History</th><th class="c">Used to train</th>
+        <th class="c">Left to forecast</th></tr></thead><tbody>
+        ${V13_ROWS.filter(d=>d.thin).map(d=>`<tr><td class="l"><b>${d.m}</b></td>
+          <td class="c">${d.hist}y</td><td class="c">&minus; ${d.need}y</td>
+          <td class="c"><b style="color:var(--amber)">${d.yrs}y</b></td></tr>`).join("")}
+      </tbody></table></div><br>` : ""}
+      <b>What each column means</b>
+      <div class="tblwrap" style="margin:6px 0 8px"><table class="coldef"><tbody>
+        <tr><td class="l"><b>Market</b></td><td class="l">The index, stock or asset this row is about.</td></tr>
+        <tr><td class="l"><b>Model</b></td><td class="l">Which of the two models runs it &mdash;
+          <b style="color:var(--accent)">JM</b> the Jump Model, <b style="color:var(--amber)">VM</b>
+          the Volatility Model. Picked by the rule below, never a blend.</td></tr>
+        <tr><td class="l"><b>Signal strength</b></td><td class="l">Overall rating out of 8:
+          <b>profit vs B&amp;H and loss vs B&amp;H, weighted equally</b>, each scored 0&ndash;4 on
+          an eight-step scale. Those two are what matter &mdash; what it earns, and what it
+          saves you.
+          <b style="color:var(--up)">Strong</b> 6+ &middot;
+          <b style="color:var(--up);font-weight:500">Good</b> 4.5+ &middot;
+          <b style="color:var(--amber)">Fair</b> 3+ &middot;
+          <b style="color:var(--down);font-weight:500">Weak</b> 1.5+ &middot;
+          <b style="color:var(--down)">Poor</b> below that.
+          AUC scores no points but sets a <b>ceiling</b> &mdash; see the scoring box below.
+          If the model cannot separate bull from bear, a flattering loss ratio is only
+          the arithmetic of sitting out.</td></tr>
+        <tr><td class="l"><b>AUC</b></td><td class="l">Area under the curve. Given one bull day
+          and one bear day, how reliably the model tells the two apart.
+          <b>This is the primary measure of model performance</b>, and the key criterion for
+          choosing between JM and VM. <b>0.50 is a coin flip</b>; <b>below 0.60 is marginal</b>;
+          0.70 and above is strong. It is measured against this market&rsquo;s <i>own</i> &ge;20%
+          declines, and it counts days rather than money &mdash; a signal can score well here and
+          still lose.</td></tr>
+        <tr><td class="l"><b>Profit vs B&amp;H</b></td><td class="l">Final value against simply
+          holding, over the whole test period. <b>Above 1.00&times; it ended ahead</b>; below,
+          behind. <b>Higher is better.</b></td></tr>
+        <tr><td class="l"><b>Protection vs B&amp;H</b></td><td class="l">How much of
+          buy-and-hold&rsquo;s loss the model avoided, averaged across <i>every</i> one of this
+          market&rsquo;s own &ge;20% declines. <b>47% means it gave up 47% less than holding
+          did</b>; 0% means it lost just as much; negative means it lost <i>more</i>.
+          <b>Higher is better</b> &mdash; the same direction as the column on its left, so
+          both read the same way. Averaged over all episodes, not just the worst one.</td></tr>
+        <tr><td class="l"><b>Time out</b></td><td class="l">Share of all days spent in T-bills rather
+          than invested.</td></tr>
+        <tr><td class="l"><b>Flips / yr</b></td><td class="l">How often the signal changes its mind
+          per year. Higher means more trading and more cost.</td></tr>
+        <tr><td class="l"><b>Avg hold</b></td><td class="l">How long one stance lasts on average, in
+          trading days.</td></tr>
+        <tr><td class="l"><b>Exit lag</b></td><td class="l">Trading days from a decline&rsquo;s peak
+          until the signal leaves the market. Lower is quicker.</td></tr>
+        <tr><td class="l"><b>Re-entry</b></td><td class="l">Trading days from the trough until it buys
+          back. Lower is quicker.</td></tr>
+        <tr><td class="l"><b>Bears missed</b></td><td class="l">Of this market&rsquo;s &ge;20%
+          declines, how many the signal sat through without ever leaving.</td></tr>
+      </tbody></table></div>
+      <style>
+        .fml { width:100%; table-layout:fixed; margin:2px 0 0; }
+        .fml td, .fml th { padding:3px 4px; font-size:11px; text-align:center;
+          line-height:1.2; white-space:nowrap; }
+        .fml th { font-size:9.5px; color:var(--muted); font-weight:600; }
+        .fml td.k { text-align:left; font-weight:650; width:118px; white-space:normal; }
+        .fml tr + tr td { border-top:1px solid var(--border); }
+        .fmlnote { font-size:11px; color:var(--muted); margin-top:7px; line-height:1.5; }
+      </style>
+      <div style="margin-top:14px;padding:11px 13px;border:1px solid var(--border);
+        border-radius:9px;background:var(--bg)">
+        <b style="font-size:12px">How signal strength is scored</b>
+        <div class="fmlnote" style="margin:3px 0 7px">Two numbers decide it &mdash; what the
+          model <b>earns</b> and what it <b>saves</b> &mdash; weighted equally, 0&ndash;4 each.
+          Both run the same way: <b>higher is better</b>.</div>
+        <div class="tblwrap"><table class="fml">
+          <thead><tr><th></th><th>4.0</th><th>3.5</th><th>3.0</th><th>2.5</th><th>2.0</th>
+            <th>1.5</th><th>1.0</th><th>0.5</th><th>0</th></tr></thead>
+          <tbody>
+          <tr><td class="k">Profit vs B&amp;H<br><span style="font-weight:400;opacity:.6">higher better</span></td>
+            <td>&ge;1.50</td><td>&ge;1.20</td><td>&ge;1.00</td><td>&ge;0.90</td><td>&ge;0.80</td>
+            <td>&ge;0.65</td><td>&ge;0.50</td><td>&ge;0.35</td><td>below</td></tr>
+          <tr><td class="k">Protection vs B&amp;H<br><span style="font-weight:400;opacity:.6">higher better</span></td>
+            <td>&ge;60%</td><td>&ge;50%</td><td>&ge;45%</td><td>&ge;40%</td><td>&ge;35%</td>
+            <td>&ge;28%</td><td>&ge;20%</td><td>&ge;10%</td><td>below</td></tr>
+          </tbody></table></div>
+        <div class="fmlnote"><b>Score = profit + protection</b>, out of 8 &nbsp;&rarr;&nbsp;
+          <b style="color:var(--up)">Strong</b> 5.5+ &middot;
+          <b style="color:var(--up);font-weight:500">Good</b> 4.0+ &middot;
+          <b style="color:var(--amber)">Fair</b> 2.5+ &middot;
+          <b style="color:var(--down);font-weight:500">Weak</b> 1.0+ &middot;
+          <b style="color:var(--down)">Poor</b> below.</div>
+        <div class="fmlnote"><b>AUC sets a ceiling</b> and scores no points:
+          <b>0.65+</b> may reach Strong &middot; <b>0.60&ndash;0.65</b> Good &middot;
+          <b>0.55&ndash;0.60</b> Fair &middot; <b>0.525&ndash;0.55</b> Weak &middot;
+          <b>below 0.525</b> Poor. <b>The rating is the lower of the two</b> &mdash; so a
+          market can score 6.5 on money and still read Good if it cannot tell bull from
+          bear. All cut-offs are a judgement call, not a tested threshold, and a higher
+          tier does not change the two numbers behind it.</div>
+      </div>
+      <b>The short version:</b> nearly every market protects to some degree in a bear
+      &mdash; but only a handful end ahead of holding. Read this as a tool for
+      <b>smaller drawdowns</b>, not bigger returns.
+    </div></div>` : "";
+
+  const ruleSection = `<tr><td class="l" style="font-weight:650">Signal generation</td>
         <td class="l">
-        • A flip to <b>bear</b> publishes after <b>2</b> consecutive bear days; a flip to <b>bull</b> after <b>3</b> consecutive bull days (exits confirm faster than re-entries)<br>
-        • Keeps 1–2-day whipsaw flips out of the published signal — users simply follow the signal shown, no waiting rules to apply<br>
-        • During an unconfirmed flip, the signal holds and the flip-risk % reads high — the pending call appears as elevated risk, not as a flip<br>
-        • Cost: genuine flips publish 1–2 days later (e.g. NDX COVID exit 17→19 trading days after the peak)${vetoBullet}${holdBullet}</td></tr>`;
-  const ensembleRow = SUFFIX !== "V7" ? "" : `<tr><td class="l" style="font-weight:650">Ensemble with the Volatility Model — added (v7a)</td>
-        <td class="l">
-        • Averages the Jump Model's bear-probability 50/50 with the continuous bear-confidence of an independent, rule-based <b>Volatility Model (VM)</b> — volatility-breakout, trend, and volume-recovery signals<br>
-        • The daily raw bull/bear reading still comes from the Jump Model alone — the combined score is what the conviction veto reads and what the flip-risk light shows, so VM can both hold back a low-conviction bear call and vouch for a marginal one<br>
-        • <b>Gain (11-market average): capture +16.8% vs the model alone</b> — fixes two markets that previously lagged buy-and-hold<br>
-        • One accepted trade-off: NVDA capture is lower under this blend — see the experiment log for detail</td></tr>`;
-  const settleRow = SUFFIX !== "V7" ? "" : `<tr><td class="l" style="font-weight:650">Settled-close guarantee — added (v8)</td>
-        <td class="l">
-        • Every market is now scored only on a <b>completed</b> session. A price is not fed to the model until that venue's trading day has provably closed<br>
-        • Previously the daily job could run while Tokyo, Seoul or Hong Kong were mid-session, so those markets were read from a live intraday quote that was then revised the next day — by as much as <b>3.6%</b><br>
-        • Gold trades nearly around the clock and its session settles the following day, so the gold tab's last bar is deliberately one day behind the equity tabs — always final, never provisional</td></tr>`;
+        These are the mechanisms built <i>onto</i> the model to turn its daily reading into the
+        published signal. The model supplies the call; everything else below decides whether, and
+        when, that call is allowed to change what the monitor shows.
+        <div class="tblwrap wraptbl" style="margin:10px 0 8px"><table>
+          <thead><tr><th class="l">Condition</th><th class="c">To turn BEAR</th><th class="c">To turn BULL</th></tr></thead>
+          <tbody>${ruleRows}</tbody></table></div>
+        <b>All conditions must hold.</b> ${hasTrend ? "The model call and the trend check are combined <i>before</i> everything below it, so either one alone can raise a bear alarm — but the confirmation, conviction and hold rules still apply to the result. " : ""}${hasVeto ? "The asymmetry is deliberate: getting out is easier than getting back in, because every re-entry filter tested cost 4–6% per episode at V-shaped market bottoms." : ""}</td></tr>`;
+
   const execRow = `<tr><td class="l" style="font-weight:650">Execution</td>
         <td class="l">Signal at close of day t → trade at close of day t+1 → first return earned day t+2 ·
         10&thinsp;bps per switch · cash earns 13-week T-bills while out.</td></tr>`;
@@ -541,7 +916,157 @@ function buildPanel(k, r) {
            style="color:var(--accent)">arxiv.org/abs/2402.05272</a> — built on the authors'
         <a href="https://github.com/Yizhan-Oliver-Shu/jump-models" target="_blank" rel="noopener"
            style="color:var(--accent)"><code>jumpmodels</code></a> package.</td></tr>`;
-  const methodCard = SUFFIX === "BL" ? `<div class="card"><h2>Statistical Jump Model Baseline — factory default setting</h2>
+  const v11Card = `<div class="card"><h2>Statistical Jump Model v11 &mdash; full specification</h2>
+    <div class="tblwrap wraptbl"><table><tbody>
+      <tr><td class="l" style="font-weight:650">Data</td>
+        <td class="l">
+        &bull; <b>Training:</b> ${dataStart} &rarr; ${dShort(r.start)} &mdash; covers ${trainingCrisisText}<br>
+        &bull; <b>Testing:</b> ${dShort(r.start)} &rarr; ${dShort(r.end)}, entirely out-of-sample<br>
+        &bull; Per-market results are in the table below &mdash; <b>no figure here is quoted from NDX alone</b></td></tr>
+      <tr><td class="l" style="font-weight:650">Walk-forward / States</td>
+        <td class="l">Unchanged from the baseline &mdash; refit each January on all data through the
+        previous 31&thinsp;Dec, the coming year predicted online, two states clustered on the features
+        below. No test-year information reaches training, scaling or &lambda; selection.</td></tr>
+      <tr><td class="l" style="font-weight:650">Features (21)</td>
+        <td class="l">Rebuilt from raw daily bars. Six families at 5 / 21 / 63-day halflives, plus three
+        drawdown terms:<br>
+        &bull; <b>Trend</b> &mdash; EWM average daily return<br>
+        &bull; <b>Close location</b> &mdash; where the close sat inside the day's high&ndash;low range<br>
+        &bull; <b>Upside / downside volatility</b> &mdash; two separate features, so a magnitude carries a direction<br>
+        &bull; <b>Up-volume / down-volume</b> &mdash; each against its own 1-year average volume<br>
+        &bull; <b>Drawdown</b> &mdash; from the running high, from the 63-day high, and the worst drawdown of the past year</td></tr>
+      <tr><td class="l" style="font-weight:650">Feature weighting</td>
+        <td class="l">The three <b>trend</b> features carry <b>70%</b> of the distance metric, split evenly
+        (23.3% each); the other 18 share the remaining 30%. That concentration means the model runs on
+        roughly <b>5.9 effective features</b>, not 21.</td></tr>
+      <tr><td class="l" style="font-weight:650">Preprocessing</td>
+        <td class="l">Standardized on training-window statistics only. <b>No &plusmn;3&sigma; clip</b> &mdash; it was
+        flattening the crisis extremes that separate the states. <b>No feature is ever masked:</b> every
+        feature speaks every day, unlike v2&ndash;v8 where the volume features were readable only after a
+        bear call had already been made.</td></tr>
+      <tr><td class="l" style="font-weight:650">Jump penalty &lambda;</td>
+        <td class="l">Re-selected every January by validation Sharpe on a 3-year window. Year-by-year
+        values: see the experiment log.</td></tr>
+      <tr><td class="l" style="font-weight:650">Removed since v8</td>
+        <td class="l">v11 is a simplification, not an addition:<br>
+        &bull; <b>Conviction check</b> (bear probability &ge;&thinsp;60%) &mdash; a hardcoded bar that mistimed Gold<br>
+        &bull; <b>8-day minimum hold</b> &mdash; measured across 11 markets it was the harmful half of the
+        decode; on NVDA, confirmation and hold each help alone but together destroy a third of the capture<br>
+        &bull; <b>Two-stage bear mask</b> and the <b>Volatility Model</b> second opinion<br>
+        Only the 2/3 confirmation below survives. Bear probability is still recorded, but it is now
+        <b>diagnostic only</b> &mdash; it gates nothing.<br>
+        <span style="opacity:.75">Full version history, with return and drawdown by era: see <b>model_history.html</b></span></td></tr>
+      ${ruleSection}
+      ${execRow}
+      ${referenceRow}
+    </tbody></table></div></div>`;
+
+  const v12Card = `<div class="card"><h2>Dual model &mdash; how a market gets its signal</h2>
+    <div class="tblwrap wraptbl"><table><tbody>
+      <tr><td class="l" style="font-weight:650">The idea</td>
+        <td class="l">Two independent models run on every market. Neither wins everywhere, so
+        each market is assigned the one that is <b>measurably better at defending it</b>.
+        The assignment is made by a rule, evaluated on the jump model alone, <i>before</i> the
+        Volatility Model is consulted.</td></tr>
+      <tr><td class="l" style="font-weight:650">The rule</td>
+        <td class="l">Take the jump model&rsquo;s published signal for a market and compare it with
+        <b>300 randomly re-timed copies of itself</b>. If it protects better than 90% of them, it
+        has genuine defensive skill on that market &mdash; <b>keep it</b>. If not, its protection is
+        coming from sitting in cash rather than from timing &mdash; <b>use the Volatility Model
+        instead</b>.<br>
+        <span style="opacity:.75">Measured across all 11 markets the split was clean, with a wide
+        gap: the kept markets scored 94&ndash;100%, the replaced ones 9&ndash;79%.</span></td></tr>
+      <tr><td class="l" style="font-weight:650">Assignment</td>
+        <td class="l">
+        <b style="color:var(--accent)">Jump model</b> &mdash; NDX, S&amp;P 500, FTSE, Nikkei, NVDA<br>
+        <b style="color:var(--amber)">Volatility Model</b> &mdash; Hang Seng, HSCEI, KOSPI, Gold,
+        Microsoft, ARKQ</td></tr>
+      <tr><td class="l" style="font-weight:650">Model A &mdash; the jump model</td>
+        <td class="l">Unsupervised regime detection on 21 price/volume features, refit each
+        January, with the trend features carrying 70% of the metric. A flip publishes only after
+        <b>2 days</b> of agreement to turn bear, <b>3</b> to turn bull. Full detail as in v11.</td></tr>
+      <tr><td class="l" style="font-weight:650">Model B &mdash; the Volatility Model</td>
+        <td class="l">Two alarms, take the louder, then damp it:<br>
+        &bull; <b>Volatility alarm</b> &mdash; where 10-day volatility sits between this
+        market&rsquo;s own median (0) and its 92nd percentile (1), both refit annually on past
+        data only<br>
+        &bull; <b>Trend alarm</b> &mdash; how far the 50-day average has fallen below the 200-day
+        (a 10% gap = 1)<br>
+        &bull; <b>Volume damper</b> &mdash; if the tape is calm <i>and</i> most volume is on up-days,
+        the alarm is dialled back toward zero<br>
+        Bear when the result is <b>&ge; 0.60</b>. This is the same score and the same threshold the
+        live v7a monitor already uses; here it drives the decision alone instead of being averaged
+        with the jump model.</td></tr>
+      <tr><td class="l" style="font-weight:650">What this does and does not buy</td>
+        <td class="l"><b>Does:</b> protection that survives the re-timing test on 10 of 11 markets
+        (the jump model alone manages 5), and every bear episode detected on the six reassigned
+        markets.<br>
+        <b>Does not:</b> better returns. Capture clears the 95% placebo bar on NDX only. Treat this
+        as risk reduction.<br>
+        <b>Caveat:</b> the 90% cut-off was chosen after seeing all 11 results, so the rule is fitted
+        to 11 observations and has not been validated out of sample.</td></tr>
+      ${execRow}
+      ${referenceRow}
+    </tbody></table></div></div>`;
+
+  const specV13 = `<div class="card"><h2>Two models, one per market</h2>
+    <div class="tblwrap wraptbl"><table><tbody>
+      <tr><td class="l" style="font-weight:650">Why two</td>
+        <td class="l">Neither model wins everywhere. The <b style="color:var(--accent)">Jump Model
+        (JM)</b> reads <b>disturbance</b> &mdash; it notices a market behaving unlike itself, which
+        is what a crash looks like. The <b style="color:var(--amber)">Volatility Model (VM)</b>
+        reads <b>direction</b> &mdash; a market can decline for a long time without ever behaving
+        abnormally, and that is what JM cannot see. Each market is given whichever one demonstrably
+        defends it.</td></tr>
+      <tr><td class="l" style="font-weight:650">How a market is assigned</td>
+        <td class="l">Two conditions, both required, both judged on <b>JM</b> before VM is
+        consulted:<br>
+        &bull; JM must fail a <b>re-timing test</b> &mdash; against 300 randomly re-timed copies of
+        its own signal it protects worse than 90% of them, meaning its defence comes from sitting
+        in cash rather than from timing; <b>and</b><br>
+        &bull; <b>VM must detect that market&rsquo;s bears better</b> (higher AUC).<br>
+        Requiring only the first once put Gold on the wrong model &mdash; its protection score came
+        from a single episode while its detection was no better than a coin flip.</td></tr>
+      <tr><td class="l" style="font-weight:650">Assignment on this board</td>
+        <td class="l">${(() => {
+          const jm = V13_ROWS.filter(d=>d.mdl==="JM").map(d=>V13_NAMES[d.m]||d.m);
+          const vm = V13_ROWS.filter(d=>d.mdl==="VM").map(d=>V13_NAMES[d.m]||d.m);
+          return `<b style="color:var(--accent)">Jump Model (JM)</b> &mdash; ${jm.join(", ")||"none"}<br>`
+               + `<b style="color:var(--amber)">Volatility Model (VM)</b> &mdash; ${vm.join(", ")||"none"}`;
+        })()}</td></tr>
+      <tr><td class="l" style="font-weight:650"><span style="color:var(--accent)">Jump Model (JM)</span></td>
+        <td class="l"><b>Watches</b> 21 features from daily price and volume &mdash; trend, close
+        location in the day&rsquo;s range, upside and downside volatility separately, up- and
+        down-volume, and drawdown &mdash; at 5, 21 and 63-day halflives, with the three trend
+        features carrying <b>70%</b> of the decision. <b>Decides</b> by sorting each day into one of
+        two clusters, refit every January on all prior data and applied forward without seeing it.
+        <b>Publishes</b> after <b>2 days</b> of agreement to turn bear, <b>3</b> to turn bull. No
+        conviction veto, no minimum hold &mdash; both were tested across 11 markets and removed as
+        harmful.</td></tr>
+      <tr><td class="l" style="font-weight:650"><span style="color:var(--amber)">Volatility Model (VM)</span></td>
+        <td class="l">Two alarms; the louder wins, then a volume check can quieten it.<br>
+        &bull; <b>Volatility alarm</b> &mdash; where 10-day volatility sits between this
+        market&rsquo;s own median (0) and its own 92nd percentile (1), both refit each January on
+        past data only<br>
+        &bull; <b>Trend alarm</b> &mdash; how far the 50-day average has fallen below the 200-day; a
+        10% gap reads as a full alarm<br>
+        &bull; <b>Volume damper</b> &mdash; if the tape is calm <i>and</i> most volume is on
+        up-days, the alarm is dialled back toward zero<br>
+        Publishes bear at <b>&ge; 0.60</b>, with no confirmation delay &mdash; exactly the signal
+        that was tested. Its flip-risk light is <b>calibrated against history</b> rather than shown
+        raw, because the alarm saturates and would otherwise read a permanent 0%.</td></tr>
+      <tr><td class="l" style="font-weight:650">What it buys</td>
+        <td class="l"><b>Protection, not return.</b> Across the markets tested, protection survives
+        the re-timing test far more often than capture does. Expect smaller drawdowns rather than a
+        bigger final number.<br>
+        <b>Known limitation:</b> which model each market uses was decided after seeing these
+        results. The rule is stated above so it can be checked against future data, but it has not
+        been validated out of sample.</td></tr>
+      ${execRow}
+      ${referenceRow}
+    </tbody></table></div></div>`;
+
+  const methodCard = BBM.has(SUFFIX) ? specV13 : SUFFIX === "V12" ? v12Card : SUFFIX === "V11" ? v11Card : SUFFIX === "BL" ? `<div class="card"><h2>Statistical Jump Model Baseline — factory default setting</h2>
     <div class="tblwrap wraptbl"><table><tbody>
       <tr><td class="l" style="font-weight:650">Data</td>
         <td class="l">
@@ -566,37 +1091,26 @@ function buildPanel(k, r) {
       <tr><td class="l" style="font-weight:650">Jump penalty λ</td>
         <td class="l">Fixed cost per regime switch (larger λ = fewer, more persistent regimes), re-selected
         every January on a 3-year validation window. Year-by-year values: see the experiment log.</td></tr>
+      ${ruleSection}
       ${execRow}
       ${referenceRow}
     </tbody></table></div></div>`
-    : `<div class="card"><h2>Statistical Jump Model ${SUFFIX === "V7" ? "v8" : SUFFIX.toLowerCase()} — changes vs the baseline</h2>
+    : `<div class="card"><h2>Statistical Jump Model ${SUFFIX === "V7" ? "v8" : SUFFIX === "V9" ? "v9" : SUFFIX === "V10" ? "v10" : SUFFIX.toLowerCase()} — changes vs the baseline</h2>
     <div class="tblwrap wraptbl"><table><tbody>
       <tr><td class="l" style="font-weight:650">Data / Walk-forward / States</td>
         <td class="l">Mechanism unchanged.<br>
         • <b>Training:</b> ${dataStart} → ${dShort(r.start)} — covers ${trainingCrisisText}<br>
         • <b>Testing:</b> ${dShort(r.start)} → ${dShort(r.end)}<br>
         • All gains quoted below are measured on <b>NDX</b></td></tr>
-      <tr><td class="l" style="font-weight:650">Original features (9)</td>
-        <td class="l">Unchanged.</td></tr>
-      <tr><td class="l" style="font-weight:650">Feature clip — removed</td>
+      <tr><td class="l" style="font-weight:650">What was added to the baseline</td>
         <td class="l">
-        • Model-structure change: the baseline's ±3σ clip flattened exactly the crisis extremes that separate bull from bear<br>
-        • <b>Gain (NDX): capture 1.16× → 1.67×</b></td></tr>
-      <tr><td class="l" style="font-weight:650">Volume features — added (3)</td>
-        <td class="l">
-        • <b>VM5 / VM21</b>: up-volume-share deviation at 5/21-day halflives · <b>ma200</b>: log distance to the 200-day average<br>
-        • Bear-masked — read neutral 0 while yesterday's call was bull, live only in bear — so they shape the recovery boundary without disturbing crash entries<br>
-        • No hardcoded thresholds · <b>Gain (NDX): capture 1.67× → 2.69×</b></td></tr>
-      <tr><td class="l" style="font-weight:650">Intraday features — added (2)</td>
-        <td class="l">
-        • <b>CLV5 / CLV21</b>: EWM of (Close−Low)/(High−Low) − ½ at 5/21-day halflives, always live<br>
-        • Bounded in [−½, ½] — distribution can't drift across eras<br>
-        • <b>Gain (NDX): fixed the slowest crisis exit</b> — 2025 tariff-shock exit 34 → 8 trading days (capture 2.69× → 2.70×)</td></tr>
-      <tr><td class="l" style="font-weight:650">Jump penalty λ, Execution</td>
-        <td class="l">Unchanged mechanism. Year-by-year λ values: see the experiment log.</td></tr>
-      ${confirmRow}
-      ${ensembleRow}
-      ${settleRow}
+        • <b>Outlier clip removed</b> (v1) — the ±3σ clip was flattening the very crisis extremes that separate bull from bear<br>
+        • <b>Volume features</b> (v2) — up-volume share at 5/21 days, plus distance from the 200-day average; readable only while the previous day's call was bear<br>
+        • <b>Intraday features</b> (v3) — where the close landed within the day's range, at 5/21 days, always live<br>
+        • <b>Signal confirmation</b> (v4–v6) — days of agreement, a conviction check, and a minimum hold<br>
+        • <b>Volatility Model</b> (v7a) — an independent second opinion on every bear call${["V9","V10"].includes(SUFFIX) ? "<br>• <b>Long-term trend</b> (v9–v10) — a second, independent way to raise a bear alarm, for declines too slow to register as volatility" : ""}<br>
+        <span style="opacity:.75">Full version history, with return and drawdown by era: see <b>model_history.html</b></span></td></tr>
+      ${ruleSection}
       ${flipRow}
     </tbody></table></div></div>`;
 
@@ -607,8 +1121,8 @@ function buildPanel(k, r) {
   // repeating it once per tab. Rendered in fixed BL-then-V3 order regardless
   // of which tab is processed first.
   if (!(SUFFIX in modelCardsBySuffix)) {
-    modelCardsBySuffix[SUFFIX] = `<div class="caveat"><b style="color:var(--accent)">JM_${SUFFIX === "V7" ? "V8" : SUFFIX}</b> — model details</div>`
-      + methodCard;
+    modelCardsBySuffix[SUFFIX] = `<div class="caveat"><b style="color:var(--accent)">${BBM.has(SUFFIX) ? "BBM_" : "JM_"}${SUFFIX === "V7" ? "V8" : SUFFIX === "V9" ? "V9" : SUFFIX === "V10" ? "V10" : SUFFIX}</b> — model details</div>`
+      + (BBM.has(SUFFIX) ? diagV13 + methodCard : methodCard + diagCard + diag12);
   }
   panelsEl.appendChild(p);
 
@@ -908,8 +1422,10 @@ for (const k of KEYS) if (!DATA[k].ref_only) buildPanel(k, DATA[k]);
   }
   const mp = document.createElement("div");
   mp.className = "panel"; mp.id = "panel-model";
-  const modelCards = ["BL", "V1", "V2", "V3", "V4", "V5", "V6", "V7"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
-  mp.innerHTML = histCard + modelCards.join("");
+  const modelCards = ["BL","V1","V2","V3","V4","V5","V6","V7","V9","V10","V11","V12","V13","V14","V15","V16"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
+  const boardFirst = KEYS.some(k => BBM.has(DATA[k].variant));
+  mp.innerHTML = boardFirst ? modelCards.join("") + histCard
+                            : histCard + modelCards.join("");
   panelsEl.appendChild(mp);
   addTab("model", "Model", null);
 }

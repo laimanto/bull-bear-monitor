@@ -51,6 +51,40 @@ VM_SHARE_FIXED = 0.60
 COST = 10 / 1e4
 
 
+def signed_vol(ret, win=10):
+    """vltup / vltdn - JM's split, brought to VM (user, 2026-08-02).
+
+    JM has carried separate upside and downside volatility since v11; VM never did,
+    and `vol10` - a plain standard deviation - is the one unsigned input it has. It
+    reads MAGNITUDE only, so a +15.5% day counts exactly like -15.5%. Measured on
+    MSFT 2026-07-30: total vol10 leapt 26.4% -> 83.1% on a RALLY, pinning the bear
+    alarm at 1.000, while downside volatility never moved (14.5% -> 14.5%).
+
+    Semi-deviation about zero: the downside leg uses only negative days, the upside
+    leg only positive ones, so neither is contaminated by the other's moves.
+    """
+    r = pd.Series(ret)
+    dn = r.where(r < 0, 0.0)
+    up = r.where(r > 0, 0.0)
+    f = np.sqrt(252)
+    return (dn.rolling(win).std().to_numpy() * f, up.rolling(win).std().to_numpy() * f)
+
+
+def signed_volume(close, volume, win=VM_WIN):
+    """volup / voldn - the volume analogue, also mirroring JM.
+
+    `ushare` already encoded the up-share, but only ever as a BUYER veto. Returning
+    both legs lets the down leg add bear conviction instead of only the up leg
+    removing it, which is what JM's volup/voldn pair does.
+    """
+    r = pd.Series(close).pct_change()
+    v = pd.Series(volume)
+    tot = v.rolling(win).sum()
+    up = v.where(r > 0, 0.0).rolling(win).sum() / tot
+    dn = v.where(r < 0, 0.0).rolling(win).sum() / tot
+    return up.to_numpy(), dn.to_numpy()
+
+
 def vb_flags(vol10, trig_arr, calm_arr):
     n = len(vol10)
     out = np.zeros(n, dtype=bool)
@@ -131,7 +165,13 @@ def yearly_params(vol10, ma_out, close, volume, p200, ret, idx, year, is_complet
     return params
 
 
-def build_walkforward(market, close_full, volume_full, first_test):
+def build_walkforward(market, close_full, volume_full, first_test, signed=False,
+                      sv=None, svol=None):
+    """sv   - signed VOLATILITY: downside leg drives the burst and gates the buyer veto,
+              upside leg damps the burst (never the trend).
+       svol - signed VOLUME: the seller share adds bear conviction, mirroring the buyer
+              veto that already existed.
+       `signed=True` sets both, kept so earlier callers behave unchanged."""
     """Walk-forward Combo v2 output for one market, using its OWN per-year
     cache. `close_full`/`volume_full` must already be truncated to the
     market's volume-clean start (build_regimes_v7.py handles this, matching
@@ -139,6 +179,15 @@ def build_walkforward(market, close_full, volume_full, first_test):
     close, volume = close_full, volume_full
     ret = close.pct_change()
     vol10 = (ret.rolling(10).std() * np.sqrt(252)).to_numpy()
+    # SIGNED VARIANT (v16 candidate). vol10 drives BOTH the burst confidence and the
+    # gate on the buyer veto, so leaving it unsigned damages the model twice: an upside
+    # spike raises bear conviction AND switches off the one input that knows direction.
+    # Both uses move to the downside leg; the upside leg becomes an explicit damper.
+    sv = signed if sv is None else sv
+    svol = signed if svol is None else svol
+    vol_dn, vol_up = signed_vol(ret.to_numpy(), 10)
+    if sv:
+        vol10 = vol_dn                       # burst + veto gate now read downside only
     sma_fast = close.rolling(MA_FAST).mean()
     sma_slow = close.rolling(MA_SLOW).mean()
     ma_out = (sma_fast < sma_slow).to_numpy()
@@ -148,6 +197,7 @@ def build_walkforward(market, close_full, volume_full, first_test):
     up = ret > 0
     ushare = ((volume.where(up, 0.0)).rolling(VM_WIN).sum()
               / volume.rolling(VM_WIN).sum())
+    volup, voldn = signed_volume(close.to_numpy(), volume.to_numpy())
 
     idx = close.index
     n = len(idx)
@@ -164,7 +214,12 @@ def build_walkforward(market, close_full, volume_full, first_test):
         if not test_mask.any() or train_mask.sum() < 260:
             continue
         is_complete = year < idx[-1].year
-        cache_path = os.path.join(MODELS_DIR, f"{market}_combo_{year}.joblib")
+        # separate cache namespace, or the signed run would silently reuse thresholds
+        # fitted on TOTAL volatility - a different quantity with a different scale
+        # keyed on `sv` ONLY: svol changes the final confidence blend, not the inputs
+        # _fit_year sees, so the yearly percentiles/grid are identical with or without it
+        tag = "combo_sv" if sv else "combo"
+        cache_path = os.path.join(MODELS_DIR, f"{market}_{tag}_{year}.joblib")
         vb_trig, vb_calm, vm_share = yearly_params(
             vol10, ma_out, close.to_numpy(), volume.to_numpy(), p200, ret_np,
             idx, year, is_complete, cache_path=cache_path)
@@ -184,6 +239,21 @@ def build_walkforward(market, close_full, volume_full, first_test):
     vm_gap = (ushare.to_numpy() - VM_SHARE_FIXED) / (1 - VM_SHARE_FIXED)
     vm_conf = np.where(vol10 <= VM_CALM, np.clip(vm_gap, 0, 1), 0.0)
     combo_p_bear = np.maximum(np.nan_to_num(vb_conf), np.nan_to_num(ma_conf)) * (1 - np.nan_to_num(vm_conf))
+    if sv or svol:
+        tot = np.nan_to_num(vol_up) + np.nan_to_num(vol_dn) + 1e-9
+        up_dom = np.clip((np.nan_to_num(vol_up) - np.nan_to_num(vol_dn)) / tot, 0, 1)
+        # The damper applies to the BURST ONLY, never to the trend. ma_conf reads the
+        # 50/200 cross, which is already signed and is a long-horizon statement; a
+        # two-day rally must not cancel it. An earlier version damped the max() of both
+        # and drove MSFT's alarm to 0.497 - flipping a market to bull off two days,
+        # exactly the over-reaction we are trying to avoid.
+        vb_signed = np.nan_to_num(vb_conf) * (1 - up_dom) if sv else np.nan_to_num(vb_conf)
+        # Sellers ADD conviction: the voldn leg, mirroring the buyer veto that already
+        # existed. JM has carried both legs since v11; VM only ever had the up one.
+        sell = np.clip((np.nan_to_num(voldn) - VM_SHARE_FIXED) / (1 - VM_SHARE_FIXED), 0, 1)
+        core = np.maximum(vb_signed, np.nan_to_num(ma_conf))
+        add = 0.5 * sell * (1 - up_dom) if svol else 0.0
+        combo_p_bear = np.clip(core * (1 - np.nan_to_num(vm_conf)) + add, 0, 1)
     combo_p_bear = np.where(valid, combo_p_bear, np.nan)
 
     result = pd.DataFrame({"close": close, "ret": ret, "out": out,

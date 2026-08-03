@@ -36,7 +36,27 @@ TICKERS = {
     "^KS11": "ks11.csv", "^N225": "nikkei.csv", "^FTSE": "ftse.csv", "GC=F": "gold.csv",
     "ARKQ": "arkq.csv", "MSFT": "msft.csv", "NVDA": "nvda.csv",
     "^IRX": "irx.csv",  # 13-week T-bill discount rate, shared risk-free leg
+    # --- the three boards added for v13 (2026-08-02) -------------------------
+    # These were downloaded once when their boards were built and then never
+    # refreshed, because this dict was the ONLY place a ticker gets registered
+    # and nobody extended it. Result: the original 12 tracked the daily job
+    # while the other 18 froze on their download date. Register them here or
+    # they silently go stale again.
+    "AAPL": "aapl.csv", "GOOGL": "googl.csv", "AMZN": "amzn.csv", "META": "meta.csv",
+    "TSLA": "tsla.csv", "MU": "mu.csv", "SMH": "smh.csv",
+    "0005.HK": "hk0005.csv", "0388.HK": "hk0388.csv", "0700.HK": "hk0700.csv",
+    "0941.HK": "hk0941.csv", "0939.HK": "hk0939.csv", "1800.HK": "hk1800.csv",
+    "1810.HK": "hk1810.csv", "9988.HK": "hk9988.csv", "BABA": "baba.csv",
+    "SLV": "silver.csv",    # not SI=F: futures carry 9-13% zero-volume days
+    "USO": "wti.csv",       # not CL=F: front-month settled at -$37.63 in 2020
+    "BTC-USD": "btc.csv", "ETH-USD": "eth.csv",   # truncated to weekdays below
 }
+# HK9988 is scored off hk9988_long.csv (BABA spliced to 9988.HK), which is REBUILT
+# from baba.csv + hk9988.csv by splice_hk9988.py - run that after this script.
+SPLICED = {"hk9988_long.csv"}
+# Crypto trades 7 days a week, but the pipeline annualises on 252 bars and charges
+# cash at irx/252, so weekend bars would distort both. Drop them at the source.
+WEEKDAY_ONLY = {"BTC-USD", "ETH-USD"}
 COLS = ["Open", "High", "Low", "Close", "Volume"]
 
 
@@ -72,6 +92,15 @@ SETTLE = {
     "^KS11": (0, 7, 30),                         # 15:30 Seoul
     "^HSI": (0, 9, 0), "^HSCE": (0, 9, 0),       # 16:00 Hong Kong
     "GC=F": (1, 22, 30),                         # 17:00 ET the NEXT day
+    # US equities and US-listed ETFs/ADRs all close 16:00 ET
+    "AAPL": (0, 21, 30), "GOOGL": (0, 21, 30), "AMZN": (0, 21, 30), "META": (0, 21, 30),
+    "TSLA": (0, 21, 30), "MU": (0, 21, 30), "SMH": (0, 21, 30), "BABA": (0, 21, 30),
+    "SLV": (0, 21, 30), "USO": (0, 21, 30),
+    # Hong Kong closes 16:00 HKT = 08:00 UTC
+    "0005.HK": (0, 9, 0), "0388.HK": (0, 9, 0), "0700.HK": (0, 9, 0), "0941.HK": (0, 9, 0),
+    "0939.HK": (0, 9, 0), "1800.HK": (0, 9, 0), "1810.HK": (0, 9, 0), "9988.HK": (0, 9, 0),
+    # Crypto never closes; a bar dated D is final at 00:00 UTC on D+1
+    "BTC-USD": (1, 0, 30), "ETH-USD": (1, 0, 30),
 }
 DEFAULT_SETTLE = (1, 22, 30)   # unknown ticker: assume the slowest case
 
@@ -94,7 +123,10 @@ def download(ticker, start):
         return pd.DataFrame(columns=COLS)
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
-    return drop_unsettled(df[COLS].dropna(subset=["Close"]), ticker)
+    df = df[COLS].dropna(subset=["Close"])
+    if ticker in WEEKDAY_ONLY:
+        df = df[df.index.dayofweek < 5]
+    return drop_unsettled(df, ticker)
 
 
 def update(ticker, fname, full=False):
