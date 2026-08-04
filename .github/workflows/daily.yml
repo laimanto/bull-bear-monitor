@@ -24,15 +24,33 @@ on:
     # both settled and published. The day-D+1 Asian sessions are already
     # trading by then; the guard drops those partial bars.
     - cron: "30 3 * * 2-6"
-    # Fallback, 2h later. GitHub Actions' `schedule` trigger is best-effort
-    # and observably drops/delays runs on low-traffic repos (confirmed here:
-    # a slot silently skipped a day and then went dark for 3+ days straight
-    # in 2026-07). The `check` job below only lets this slot do real work if
-    # nothing has succeeded yet today, so on a normal day it's a no-op that
-    # exits in seconds. Both slots are on the same UTC day, so the job's
-    # midnight-anchored "already ran today?" test stays valid.
+    # Retry slots. GitHub Actions' `schedule` trigger is best-effort and
+    # observably drops/delays runs on low-traffic repos (confirmed here: a
+    # slot silently skipped a day and then went dark for 3+ days straight in
+    # 2026-07; on 2026-08-04 the 03:30 slot never fired at all and the 05:30
+    # one landed at 06:11). The `check` job below only lets a retry slot do
+    # real work if nothing has SUCCEEDED yet today, so on a normal day each is
+    # a no-op that exits in seconds. All slots sit on the same UTC day, so the
+    # job's midnight-anchored "already ran today?" test stays valid.
+    #
+    # There are three retries rather than one because a run now FAILS when the
+    # data it fetched is stale (scripts/check_freshness.py) - and staleness is
+    # exactly the condition that a retry a few hours later fixes. On
+    # 2026-08-04 Yahoo had no 08-03 bar for the US tickers or the Asian
+    # indices at 06:12 UTC but had them all by 17:00 UTC.
     - cron: "30 5 * * 2-6"
+    - cron: "30 7 * * 2-6"
+    # Last slot of the day: runs with ALLOW_STALE=1, so the freshness check
+    # only warns. A venue holiday trips the check exactly like a Yahoo delay
+    # does and nothing can distinguish them, so the day must end by publishing
+    # whatever exists rather than leaving the boards unbuilt.
+    - cron: "0 13 * * 2-6"
   workflow_dispatch:
+    inputs:
+      allow_stale:
+        description: "Publish even if the data is behind (skip the freshness gate)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -55,9 +73,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          # Only the fallback (2h-later) cron slot needs gating - the primary
-          # slot and manual/dispatch triggers always run.
-          if [ "${{ github.event.schedule }}" != "30 5 * * 2-6" ]; then
+          # Only the retry slots need gating - the primary slot and
+          # manual/dispatch triggers always run.
+          if [ "${{ github.event.schedule }}" = "" ] \
+             || [ "${{ github.event.schedule }}" = "30 3 * * 2-6" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -105,6 +124,20 @@ jobs:
           # file goes stale unless this runs after every data refresh.
           python splice_hk9988.py
         working-directory: scripts
+
+      # Stop here if update_data came back with nothing new. Yahoo publishes
+      # a consolidated daily bar late and erratically (2026-08-04: no 08-03
+      # bar for any US ticker or Asian index at 06:12 UTC, all present by
+      # 17:00 UTC), and without this step that run still exits 0, still
+      # commits, and still publishes boards dated three days stale. Failing
+      # here leaves the day's gate open so a retry slot picks it up; the
+      # 13:00 UTC slot sets ALLOW_STALE=1 so a venue holiday - which is
+      # indistinguishable from a Yahoo delay - still publishes.
+      - name: Verify the data is actually current
+        run: python check_freshness.py
+        working-directory: scripts
+        env:
+          ALLOW_STALE: ${{ (github.event.schedule == '0 13 * * 2-6' || inputs.allow_stale) && '1' || '0' }}
 
       # BBM v16 pipeline, ported from the research repo 2026-08-03 (replacing
       # the retired JM v7 build). Warm runs do inference only - the fitcache/

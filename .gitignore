@@ -9,6 +9,7 @@
 !/scripts
 /scripts/*
 !/scripts/update_data.py
+!/scripts/check_freshness.py
 !/scripts/splice_hk9988.py
 !/scripts/build_regimes.py
 !/scripts/build_payloads.py
