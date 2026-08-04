@@ -18,6 +18,10 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(DIR, "..", "results")
 COST = 10 / 1e4
 TD = 252
+# "Changed recently" window for the board's ticker highlight (user, 2026-08-04).
+# Trading days, not calendar days - over a weekend a calendar window would silently
+# shrink to one session. Keep in step with RECENT_N in dashboard_template_prod.html.
+RECENT_N = 3
 
 MARKETS = ["NDX", "SPX", "HSI", "HSCEI", "KOSPI", "NIKKEI", "FTSE",
            "GOLD", "ARKQ", "MSFT", "NVDA"]
@@ -317,6 +321,13 @@ def main(sym, variant="V6"):
         p_bear_1w=_num(df["p_bear"].iloc[-6] if "p_bear" in df and len(df) > 6 else None),
         p_bear_2w=_num(df["p_bear"].iloc[-11] if "p_bear" in df and len(df) > 11 else None),
         p_bear_1m=_num(df["p_bear"].iloc[-22] if "p_bear" in df and len(df) > 22 else None),
+        # The last RECENT_N+1 sessions of p_bear, oldest first, so the board can tell
+        # whether the flip-risk light CHANGED colour recently and mark the ticker.
+        # The zone thresholds live in the template's flipZone() and depend on the day's
+        # own bull/bear state, so the history is shipped raw and classified there -
+        # duplicating the thresholds here is how the two would silently drift apart.
+        p_bear_hist=([_num(v) for v in df["p_bear"].iloc[-(RECENT_N + 1):]]
+                     if "p_bear" in df and len(df) > RECENT_N else None),
     )
 
     eq_s = (1 + df["strat_ret"]).cumprod() * 10000

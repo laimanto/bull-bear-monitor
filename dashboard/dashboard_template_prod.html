@@ -10,6 +10,7 @@
     --out-soft: rgba(100, 112, 138, 0.16);
     --tab-hover: #eceef2; --tooltip-bg: rgba(255, 255, 255, 0.97);
     --flash: rgba(37, 99, 235, 0.18);
+    --chg: #7c3aed; --chg-soft: rgba(124, 58, 237, 0.10);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -22,6 +23,7 @@
       --out-soft: rgba(139, 150, 171, 0.18);
       --tab-hover: #232a37; --tooltip-bg: rgba(26, 31, 41, 0.97);
       --flash: rgba(91, 147, 245, 0.25);
+    --chg: #a78bfa; --chg-soft: rgba(167, 139, 250, 0.14);
     }
   }
   :root[data-theme="dark"] {
@@ -34,6 +36,7 @@
     --out-soft: rgba(139, 150, 171, 0.18);
     --tab-hover: #232a37; --tooltip-bg: rgba(26, 31, 41, 0.97);
     --flash: rgba(91, 147, 245, 0.25);
+    --chg: #a78bfa; --chg-soft: rgba(167, 139, 250, 0.14);
   }
   :root[data-theme="light"] {
     --bg: #f6f7f9; --card: #ffffff; --border: #e2e5ea;
@@ -45,6 +48,7 @@
     --out-soft: rgba(100, 112, 138, 0.16);
     --tab-hover: #eceef2; --tooltip-bg: rgba(255, 255, 255, 0.97);
     --flash: rgba(37, 99, 235, 0.18);
+    --chg: #7c3aed; --chg-soft: rgba(124, 58, 237, 0.10);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -71,6 +75,15 @@
   .tab .pip { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .pip.in { background: var(--up); } .pip.outp { background: var(--down); }
   .tab.active .pip.in { background: #b3f0c8; } .tab.active .pip.outp { background: #ffc2c2; }
+  /* Recently changed (user, 2026-08-04): the signal flipped, or the flip-risk light
+     moved colour, within the last RECENT_N sessions. Colour is NOT the only cue - the
+     tab also carries a tinted ring, a raised marker and a title attribute, so it still
+     reads under colour-blindness, greyscale printing and forced-colors. */
+  .tab.chg { border-color: var(--chg); background: var(--chg-soft); }
+  .tab.chg .lbl { color: var(--chg); font-weight: 800; }
+  .tab.chg .chgmark { color: var(--chg); font-size: 9px; vertical-align: super; margin-left: -3px; }
+  .tab.active.chg { background: var(--accent); border-color: var(--accent); }
+  .tab.active.chg .lbl, .tab.active.chg .chgmark { color: #fff; }
   .panel { display: none; }
   .panel.active { display: block; }
   .caveat { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
@@ -160,6 +173,7 @@
   </div>
   <div class="sub" id="sub"></div>
   <div class="tabs" id="tabs"></div>
+  <div class="hint" id="chgnote" style="margin-top:-8px;margin-bottom:14px;display:none"></div>
   <div id="panels"></div>
 </div>
 
@@ -288,7 +302,48 @@ document.getElementById("sub").innerHTML =
 const tabsEl = document.getElementById("tabs");
 const panelsEl = document.getElementById("panels");
 const charts = {};
-function addTab(id, label, outFlag, flipColor, pending) {
+// ---------- "changed recently" ticker highlight (user, 2026-08-04) ----------
+// Mark a ticker when EITHER published reading moved within the last RECENT_N sessions:
+// the signal itself flipping bull<->bear, or the flip-risk light changing colour.
+// Keep RECENT_N in step with build_payloads.py, which ships p_bear_hist at this length.
+//
+// The zone history is classified HERE, with the same flipZone() the tiles use, rather
+// than server-side: the thresholds and the bull/bear inversion live in that one
+// function, and a second copy in Python is how the tab and the tile would come to
+// disagree. Each past day is classified against ITS OWN state, not today's - during a
+// flip the inversion changes, and reusing today's state would invent a zone change.
+const RECENT_N = 3;
+function recentChange(r) {
+  const sig = r.signal ?? {}, why = [];
+  const age = sig.regime_age;
+  if (age != null && age <= RECENT_N)
+    why.push(`signal turned ${String(r.current_state).toUpperCase()} ${age} trading day${age === 1 ? "" : "s"} ago`);
+  const hist = sig.p_bear_hist;
+  if (Array.isArray(hist) && hist.length > 1 && Array.isArray(r.state)) {
+    const st = r.state, base = st.length - hist.length;
+    const names = hist.map((pb, i) => {
+      const j = base + i;
+      if (pb == null || j < 0 || st[j] == null) return null;
+      const z = flipZone(st[j] === 0 ? "bull" : "bear", pb);
+      return z ? z.name : null;
+    });
+    // Walk back to where the light last differed, the same way regime_age does for the
+    // signal. Comparing only against YESTERDAY reports "GREEN → GREEN" whenever the move
+    // happened earlier in the window and has held since.
+    const last = names.length - 1, now = names[last];
+    if (now != null) {
+      let i = last;
+      while (i > 0 && names[i - 1] === now) i--;
+      const from = i > 0 ? names[i - 1] : null;
+      const ago = last - i + 1;
+      if (from != null)
+        why.push(`flip-risk light moved ${from} → ${now} ${ago} trading day${ago === 1 ? "" : "s"} ago`);
+    }
+  }
+  return why;
+}
+
+function addTab(id, label, outFlag, flipColor, pending, changed) {
   // outFlag is derived from the SIGNAL, not the position (fixed 2026-08-02, user).
   // It used to read `current_pos`, so on ARKQ - whose signal turned bear on 07-30 but
   // whose sell executes two days later - the tab showed a green dot beside a BEAR
@@ -300,7 +355,13 @@ function addTab(id, label, outFlag, flipColor, pending) {
     `<span class="pip ${outFlag ? "outp" : "in"}"
        title="${outFlag ? "Signal: BEAR" : "Signal: BULL"}${pending ? " - executes at the next day’s close" : ""}"></span>`;
   const pip2 = flipColor ? `<span class="pip" style="background:${flipColor}"></span>` : "";
-  b.innerHTML = pip1 + pip2 + label;
+  const chg = changed && changed.length;
+  if (chg) {
+    b.classList.add("chg");
+    b.title = `Changed in the last ${RECENT_N} trading days — ` + changed.join("; ");
+  }
+  b.innerHTML = pip1 + pip2 + `<span class="lbl">${label}</span>`
+              + (chg ? `<span class="chgmark" aria-hidden="true">&#9679;</span>` : "");
   b.onclick = () => activate(id);
   tabsEl.appendChild(b);
 }
@@ -372,7 +433,7 @@ function buildPanel(k, r) {
   const zone = flipZone(r.current_state, sig.p_bear);
   const sigBear = r.current_state === "bear";
   addTab(k, SUFFIX === "BL" ? `${r.symbol}_${SUFFIX}` : r.symbol, sigBear,
-         zone ? zone.color : null, sigBear === inMkt);
+         zone ? zone.color : null, sigBear === inMkt, recentChange(r));
   const dataStart = (r.train_start ? dShort(r.train_start) : dShort(r.start)) + (TRAIN_NOTE[r.symbol] ?? "");
   const p = document.createElement("div");
   p.className = "panel"; p.id = "panel-" + k;
@@ -1407,6 +1468,19 @@ function makeChart(k, r) {
 // ref_only payloads (e.g. the NDX reference shipped with the stock dashboard
 // solely for the Era Performance NDQ benchmark row) get no tab or panel.
 for (const k of KEYS) if (!DATA[k].ref_only) buildPanel(k, DATA[k]);
+// Name what the highlight means, and only when something is actually highlighted -
+// a permanent legend for an empty state is noise on the ~340 days a year nothing moved.
+{
+  const moved = KEYS.filter(k => !DATA[k].ref_only && recentChange(DATA[k]).length)
+                    .map(k => DATA[k].symbol);
+  const note = document.getElementById("chgnote");
+  if (note && moved.length) {
+    note.style.display = "";
+    note.innerHTML = `<span style="color:var(--chg);font-weight:700">${moved.join(", ")}</span>`
+      + ` changed in the last ${RECENT_N} trading days — the signal flipped or the flip-risk`
+      + ` light moved colour. Hover the ticker for which.`;
+  }
+}
 {
   let histCard = "";
   if (HISTORY.length) {
