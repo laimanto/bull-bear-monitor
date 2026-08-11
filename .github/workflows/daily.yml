@@ -33,11 +33,25 @@ on:
     # a no-op that exits in seconds. All slots sit on the same UTC day, so the
     # job's midnight-anchored "already ran today?" test stays valid.
     #
-    # There are three retries rather than one because a run now FAILS when the
-    # data it fetched is stale (scripts/check_freshness.py) - and staleness is
-    # exactly the condition that a retry a few hours later fixes. On
-    # 2026-08-04 Yahoo had no 08-03 bar for the US tickers or the Asian
-    # indices at 06:12 UTC but had them all by 17:00 UTC.
+    # There are three retries rather than one because a run stops before the
+    # build when the data it fetched is stale (scripts/check_freshness.py) -
+    # and staleness is exactly the condition that a retry a few hours later
+    # fixes. On 2026-08-04 Yahoo had no 08-03 bar for the US tickers or the
+    # Asian indices at 06:12 UTC but had them all by 17:00 UTC.
+    #
+    # CRYPTO IS LATE EVERY SINGLE DAY (measured 2026-08-11). Yahoo does not
+    # publish the consolidated BTC-USD daily bar for day D until roughly
+    # D+1 07:00-10:00 UTC (present by 08:07 / 08:31 / 08:35 UTC on 08-06 /
+    # 08-11 / 08-07; still absent at 08:03 UTC on 08-05 and only there by
+    # 10:10). Nothing is wrong with the fetch: update_data's settle guard
+    # releases a BTC bar from D+1 00:30 UTC, and the runner logged
+    # "BTC-USD: refreshed last close" - yfinance simply returned nothing
+    # newer. So the 03:30 and 05:30 slots are STRUCTURALLY unable to pass
+    # the freshness gate, and the board normally goes out at 07:30.
+    # That is why "data not ready" is a green skip rather than a failure
+    # (see the freshness step below): between 2026-08-05 and 2026-08-11 it
+    # sent 1-2 red failure notifications on every single trading day, all of
+    # them crypto, all of them followed by a successful publish hours later.
     - cron: "30 5 * * 2-6"
     - cron: "30 7 * * 2-6"
     # Last slot of the day: runs with ALLOW_STALE=1, so the freshness check
@@ -80,23 +94,35 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          today_start="$(date -u +%Y-%m-%dT00:00:00Z)"
+          today="$(date -u +%F)"
+          # Gate on "did a board actually get PUBLISHED today?", NOT on "did a
+          # run SUCCEED today?" (2026-08-11). Since a run that finds the data
+          # unpublished now exits GREEN and skips the build, a successful run
+          # no longer implies a fresh board - the old conclusion-based test
+          # would close the gate on exactly the runs that did nothing and
+          # reinstate the 24h-stale-board hole check_freshness.py was written
+          # to close. The commit is the one unambiguous receipt: that message
+          # is written by the commit step below and by nothing else.
+          #
           # --method GET is REQUIRED: `gh api` silently switches to POST as
-          # soon as any -f parameter is present, and POSTing to the runs-list
+          # soon as any -f parameter is present, and POSTing to a read
           # endpoint 404s. Without it this step failed in <10s every time the
           # fallback fired (observed 2026-07-24 05:34 and 2026-07-25 05:27),
           # so the safety net never actually ran. The original "verified
           # working" check was a manual workflow_dispatch, which exits at the
           # branch above and never reaches this call.
-          already_ran=$(gh api --method GET \
-            "repos/$REPO/actions/workflows/daily.yml/runs" \
-            -f status=success -f created=">=${today_start}" \
-            --jq '.workflow_runs | length')
-          if [ "$already_ran" -gt 0 ]; then
-            echo "Primary run already succeeded today ($already_ran run(s)) - skipping." >&2
+          #
+          # On any API error, fall through to should_run=true: doing the work
+          # twice is recoverable, silently skipping the day is not.
+          published=$(gh api --method GET "repos/$REPO/commits" \
+            -f sha=main -f since="${today}T00:00:00Z" -f per_page=100 \
+            --jq "[.[] | select(.commit.message | startswith(\"Daily update ${today}\"))] | length") \
+            || published=0
+          if [ "${published:-0}" -gt 0 ]; then
+            echo "Board already published today ($published commit(s)) - skipping." >&2
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           else
-            echo "No successful run yet today - running as fallback." >&2
+            echo "Nothing published yet today - running as fallback." >&2
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -129,12 +155,28 @@ jobs:
       # a consolidated daily bar late and erratically (2026-08-04: no 08-03
       # bar for any US ticker or Asian index at 06:12 UTC, all present by
       # 17:00 UTC), and without this step that run still exits 0, still
-      # commits, and still publishes boards dated three days stale. Failing
-      # here leaves the day's gate open so a retry slot picks it up; the
-      # 13:00 UTC slot sets ALLOW_STALE=1 so a venue holiday - which is
+      # commits, and still publishes boards dated three days stale. The 13:00
+      # UTC slot sets ALLOW_STALE=1 so a venue holiday - which is
       # indistinguishable from a Yahoo delay - still publishes.
+      #
+      # "Not published yet" is a GREEN SKIP, not a failure (2026-08-11). It is
+      # the ordinary morning state of the data, not a fault: see the crypto
+      # note on the cron block above. Every step below is gated on
+      # steps.freshness.outputs.fresh, so the run stops here and ends
+      # successfully, and the day's gate stays open because the `check` job
+      # keys on today's commit rather than on a run conclusion. A genuine
+      # breakage - pip, the build, MAX_NEW_FITS, the push - still fails the
+      # run loudly, which is the whole point of not muting the notifications
+      # at the GitHub end instead.
       - name: Verify the data is actually current
-        run: python check_freshness.py
+        id: freshness
+        run: |
+          if python check_freshness.py; then
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Data not published yet - skipping the build. A later slot will retry."
+          fi
         working-directory: scripts
         env:
           ALLOW_STALE: ${{ (github.event.schedule == '0 13 * * 2-6' || inputs.allow_stale) && '1' || '0' }}
@@ -147,12 +189,16 @@ jobs:
       # history), MAX_NEW_FITS aborts the run rather than training for hours
       # in CI - rebuild locally and commit the refreshed fitcache/ instead.
       - name: Build BBM v16 boards
+        if: steps.freshness.outputs.fresh == 'true'
         run: python rebuild_daily.py
         working-directory: scripts
         env:
           MAX_NEW_FITS: "40"
 
+      # The commit message is the receipt the `check` job gates the retry
+      # slots on - keep it starting with "Daily update <UTC date>".
       - name: Commit refreshed data + results + dashboards
+        if: steps.freshness.outputs.fresh == 'true'
         run: |
           git config user.name "bull-bear-bot"
           git config user.email "laimanto@gmail.com"
@@ -161,6 +207,7 @@ jobs:
           git push
 
       - name: Prepare Pages artifact
+        if: steps.freshness.outputs.fresh == 'true'
         run: |
           mkdir -p _site
           cp "dashboard/index.html" _site/index.html
@@ -170,8 +217,10 @@ jobs:
           cp "dashboard/monitor2.html" _site/monitor2.html
 
       - uses: actions/upload-pages-artifact@v3
+        if: steps.freshness.outputs.fresh == 'true'
         with:
           path: _site
 
       - id: deployment
+        if: steps.freshness.outputs.fresh == 'true'
         uses: actions/deploy-pages@v4
