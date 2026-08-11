@@ -89,7 +89,30 @@ VM_CFG = {
     # prior 10 days average -2.47% and the NEXT 10 average +1.04%. Acting faster on
     # high conviction means exiting into the bounce.
     "V16": dict(gate=(2, 3, 1), sv=True),
+    # V17 (2026-08-10). THE VM IS UNCHANGED FROM V16 - same gate, same signed
+    # volatility. v17 is not a model change at all; it is a fix to the STATISTIC the
+    # placebo is computed on, which is why it still gets a version: it moves the
+    # JM-vs-VM assignment on FTSE and SMH and re-rates about a dozen markets.
+    # See ALL_EP_PLACEBO below.
+    "V17": dict(gate=(2, 3, 1), sv=True),
 }
+
+# WHICH PROTECTION STATISTIC THE PLACEBO SCORES (2026-08-10).
+#
+# fc.score()'s `prot` is the SINGLE WORST DRAWDOWN - one peak, one trough - so every
+# placebo percentile in v13-v16 is a percentile on a ONE-EPISODE statistic. That is the
+# same worst-drawdown protection that was removed from the dashboard on 2026-08-02 for
+# systematically flattering; it was never removed from the placebo, so it kept deciding
+# which model each market runs.
+#
+# Measured against a placebo on the ALL-EPISODE average (the quantity the page publishes
+# as loss vs B&H): Spearman +0.841, but a mean absolute change of 19 percentile points,
+# and 9 of 30 markets move 25+. The movers share a signature - their DEEPEST bear was
+# well defended while their TYPICAL bear was not (AAPL 93->61, HK0005 98->61,
+# AMZN 86->24, SMH 95->74).
+#
+# Older variants keep the old statistic on purpose, so v13-v16 stay reproducible.
+ALL_EP_PLACEBO = {"V17"}
 
 # Under this many FORECAST years a market is shown but marked as unproven. Set to 7.0
 # (user, 2026-08-02): at 8.0 it separated ARKQ/BTC at 7.6y from META at 9.6y, and those
@@ -101,7 +124,15 @@ N_SHIFT = 300
 # Tab order is the order below. US and HK are alphabetical / numeric-ascending; the
 # commodity board follows Gold > Silver > Oil > Bitcoin > Ethereum.
 BOARDS = {
-    "index": ["NDX", "SPX", "HSI", "KOSPI", "NIKKEI", "FTSE"],
+    # Singapore is EWS, not STI/ES3.SI (user, 2026-08-09). Both were built and compared;
+    # ES3.SI tracks the index far more tightly (daily 0.937 vs 0.569) but offers only
+    # TWO >=20% episodes in its forecast window, which is not enough to say anything -
+    # its 0.815 AUC sits on a 59th-percentile placebo. EWS has 6 episodes at the 92nd,
+    # and its signal protects ES3.SI's own returns better than ES3.SI's own signal does
+    # (14.4% avoided at the 88th percentile, vs 4.6% at the 58th).
+    # STI stays defined in build_regimes.SYMBOLS with its data and fitcache intact, so
+    # putting it back is a one-line change - it is simply not published.
+    "index": ["NDX", "SPX", "HSI", "KOSPI", "NIKKEI", "EWS", "FTSE"],
     "us": ["AAPL", "AMZN", "ARKQ", "GOOGL", "META", "MSFT", "MU", "NVDA", "SMH", "TSLA"],
     "hk": ["HK0005", "HK0388", "HK0700", "HK0939", "HK0941", "HK1800", "HK1810", "HK9988"],
     "cc": ["GOLD", "SILVER", "WTI", "BTC", "ETH"],
@@ -140,14 +171,43 @@ def vm_state(alarm):
         dc.N_BEAR, dc.N_BULL, dc.DWELL = old
 
 
+def prot_all_episodes(close, ret, rf, pub, eps):
+    """Protection averaged over EVERY >=20% episode - ratio of averages, not average of
+    ratios, identical to build_payloads._protection so the placebo and the published
+    loss-vs-B&H number describe the same quantity."""
+    pos = (pub == 0).astype(float).shift(2).fillna(1.0 if pub.iloc[0] == 0 else 0.0)
+    st = pos * ret + (1 - pos) * rf - pos.diff().abs().fillna(0.0) * fc.COST
+    bh = [(1 + ret.loc[pk:tr]).prod() - 1 for pk, tr, _ in eps]
+    sr = [(1 + st.loc[pk:tr]).prod() - 1 for pk, tr, _ in eps]
+    if not bh or np.mean(bh) == 0:
+        return np.nan
+    return 1.0 - np.mean(sr) / np.mean(bh)
+
+
 def placebo(c, r, f, sig, n=N_SHIFT):
+    """Circular-shift the signal n times and return its percentile among the shuffles.
+
+    A rolled copy preserves exposure, flip count and run lengths exactly; only the
+    ALIGNMENT to the market is destroyed. So the percentile isolates timing from the
+    arithmetic of being absent - which is the whole point, and why the raw protection
+    number cannot be used for this (it correlates +0.49 with time out of market).
+    """
     s = fc.score(c, r, f, sig)
     rng = np.random.default_rng(0)
     sh = rng.integers(252, max(253, len(sig) - 252), size=n)
-    nl = [fc.score(c, r, f, pd.Series(np.roll(sig.values, int(k)), index=sig.index))
-          for k in sh]
-    return (s, 100 * float(np.mean([x["cap"] < s["cap"] for x in nl])),
-            100 * float(np.mean([x["prot"] < s["prot"] for x in nl])))
+    rolled = [pd.Series(np.roll(sig.values, int(k)), index=sig.index) for k in sh]
+    nl = [fc.score(c, r, f, x) for x in rolled]
+    capP = 100 * float(np.mean([x["cap"] < s["cap"] for x in nl]))
+    if VARIANT in ALL_EP_PLACEBO:
+        eps = episodes(c)
+        real = prot_all_episodes(c, r, f, sig, eps)
+        vals = [v for v in (prot_all_episodes(c, r, f, x, eps) for x in rolled)
+                if not np.isnan(v)]
+        protP = (100 * float(np.mean([v < real for v in vals]))
+                 if vals and not np.isnan(real) else np.nan)
+    else:
+        protP = 100 * float(np.mean([x["prot"] < s["prot"] for x in nl]))
+    return s, capP, protP
 
 
 def assess(m):
@@ -174,9 +234,14 @@ def build(a, variant):
     d = a["d"].copy()
     if a["use_vm"]:
         d["state"] = a["V"].astype(float)
-        d["raw_state"] = d["state"]
+        # VM's TRUE raw (pre-gate) state is the bare threshold crossing. This used to be
+        # written as a copy of the PUBLISHED state, which silently destroyed it for every
+        # VM market and made the confirmation countdown impossible to compute on 20 of the
+        # 30 boards (found 2026-08-10). vm_state() applies the 2/3 gate on top of exactly
+        # this series, so raw and published now differ here the same way they do for JM.
+        d["raw_state"] = (a["alarm"] >= VM_THRESH).astype(int)
         d["vm_alarm"] = a["alarm"]
-        d["p_bear"] = vcal.calibrate(a["V"], a["alarm"])   # honest flip probability
+        d["p_bear"] = vcal.calibrate(a["V"], a["alarm"])   # overwritten by flip_calibrate
         d["lam"] = np.nan
     d.to_csv(os.path.join(RESULTS, f"regimes_{m}_{variant}.csv"))
     pub = d["state"].astype(int)

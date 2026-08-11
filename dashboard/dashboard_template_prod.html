@@ -193,8 +193,8 @@ const cls = x => x >= 0 ? "pos" : "neg";
 const dShort = s => { const d = new Date(s + "T00:00:00"); return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); };
 
 // ---------- header ----------
-const V13_ALL = [{"m": "NDX", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 27.6, "hist": 40.9, "need": 13.3, "auc": 0.794, "profit": 2.559, "out": 0.1658, "fl": 3.0, "hold": 84, "n": 6, "miss": 3, "ex": 41, "re": 10}, {"m": "SPX", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.731, "profit": 0.831, "out": 0.1583, "fl": 1.4, "hold": 169, "n": 4, "miss": 0, "ex": 58, "re": 40}, {"m": "HSI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 24.6, "need": 8.0, "auc": 0.627, "profit": 0.923, "out": 0.2591, "fl": 3.5, "hold": 69, "n": 4, "miss": 0, "ex": 64, "re": 50}, {"m": "KOSPI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 24.6, "hist": 29.7, "need": 5.1, "auc": 0.625, "profit": 0.635, "out": 0.1713, "fl": 2.9, "hold": 84, "n": 7, "miss": 0, "ex": 76, "re": 37}, {"m": "NIKKEI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 24.2, "need": 7.6, "auc": 0.612, "profit": 0.409, "out": 0.1914, "fl": 5.0, "hold": 48, "n": 5, "miss": 0, "ex": 12, "re": 29}, {"m": "FTSE", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 22.6, "hist": 27.6, "need": 5.0, "auc": 0.583, "profit": 0.742, "out": 0.1552, "fl": 1.0, "hold": 238, "n": 3, "miss": 0, "ex": 122, "re": 100}, {"m": "AAPL", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.695, "profit": 0.297, "out": 0.2266, "fl": 4.0, "hold": 62, "n": 14, "miss": 0, "ex": 28, "re": 17}, {"m": "ARKQ", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 7.6, "hist": 11.9, "need": 4.3, "auc": 0.682, "profit": 0.876, "out": 0.383, "fl": 8.3, "hold": 30, "n": 5, "miss": 0, "ex": 8, "re": 13}, {"m": "META", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 9.6, "hist": 14.2, "need": 4.6, "auc": 0.679, "profit": 1.319, "out": 0.2656, "fl": 2.2, "hold": 110, "n": 6, "miss": 1, "ex": 53, "re": 62}, {"m": "AMZN", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 23.6, "hist": 29.2, "need": 5.6, "auc": 0.642, "profit": 0.296, "out": 0.1847, "fl": 2.6, "hold": 94, "n": 12, "miss": 5, "ex": 57, "re": 17}, {"m": "MU", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.636, "profit": 1.604, "out": 0.4247, "fl": 4.0, "hold": 62, "n": 19, "miss": 3, "ex": 27, "re": 31}, {"m": "GOOGL", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 22.0, "need": 5.4, "auc": 0.634, "profit": 0.403, "out": 0.2041, "fl": 5.7, "hold": 44, "n": 9, "miss": 1, "ex": 28, "re": 29}, {"m": "NVDA", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 22.6, "hist": 27.5, "need": 4.9, "auc": 0.633, "profit": 0.633, "out": 0.2401, "fl": 3.1, "hold": 80, "n": 14, "miss": 5, "ex": 22, "re": 22}, {"m": "MSFT", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 40.4, "need": 12.8, "auc": 0.625, "profit": 0.925, "out": 0.2269, "fl": 3.9, "hold": 64, "n": 8, "miss": 1, "ex": 57, "re": 31}, {"m": "TSLA", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 11.6, "hist": 16.1, "need": 4.5, "auc": 0.594, "profit": 0.186, "out": 0.4998, "fl": 2.3, "hold": 104, "n": 8, "miss": 2, "ex": 20, "re": 20}, {"m": "SMH", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 20.6, "hist": 26.2, "need": 5.6, "auc": 0.571, "profit": 0.46, "out": 0.071, "fl": 2.5, "hold": 98, "n": 9, "miss": 3, "ex": 68, "re": 8}, {"m": "HK0939", "board": "Hong Kong", "mdl": "JM", "thin": false, "yrs": 10.6, "hist": 15.6, "need": 5.0, "auc": 0.808, "profit": 0.591, "out": 0.5738, "fl": 1.1, "hold": 201, "n": 3, "miss": 0, "ex": 0, "re": 58}, {"m": "HK9988", "board": "Hong Kong", "mdl": "VM", "thin": true, "yrs": 6.6, "hist": 11.9, "need": 5.3, "auc": 0.717, "profit": 1.949, "out": 0.4837, "fl": 6.5, "hold": 37, "n": 4, "miss": 0, "ex": 16, "re": 20}, {"m": "HK0388", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 12.6, "hist": 17.6, "need": 5.0, "auc": 0.645, "profit": 0.495, "out": 0.2987, "fl": 6.2, "hold": 39, "n": 4, "miss": 0, "ex": 13, "re": 34}, {"m": "HK0700", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.642, "profit": 0.485, "out": 0.2617, "fl": 3.8, "hold": 64, "n": 9, "miss": 1, "ex": 40, "re": 21}, {"m": "HK1810", "board": "Hong Kong", "mdl": "VM", "thin": true, "yrs": 3.6, "hist": 8.1, "need": 4.5, "auc": 0.606, "profit": 1.577, "out": 0.2846, "fl": 3.9, "hold": 59, "n": 5, "miss": 1, "ex": 28, "re": 4}, {"m": "HK0005", "board": "Hong Kong", "mdl": "JM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.588, "profit": 1.035, "out": 0.1061, "fl": 2.4, "hold": 100, "n": 5, "miss": 1, "ex": 194, "re": 11}, {"m": "HK0941", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.584, "profit": 0.732, "out": 0.1426, "fl": 2.9, "hold": 83, "n": 3, "miss": 0, "ex": 116, "re": 16}, {"m": "HK1800", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 12.6, "hist": 17.6, "need": 5.0, "auc": 0.58, "profit": 1.159, "out": 0.416, "fl": 5.3, "hold": 46, "n": 6, "miss": 0, "ex": 11, "re": 28}, {"m": "BTC", "board": "Commodity & crypto", "mdl": "VM", "thin": false, "yrs": 7.6, "hist": 11.9, "need": 4.3, "auc": 0.622, "profit": 0.838, "out": 0.3783, "fl": 4.7, "hold": 54, "n": 7, "miss": 1, "ex": 44, "re": 12}, {"m": "GOLD", "board": "Commodity & crypto", "mdl": "JM", "thin": false, "yrs": 12.6, "hist": 18.6, "need": 6.0, "auc": 0.61, "profit": 0.543, "out": 0.5709, "fl": 4.8, "hold": 51, "n": 3, "miss": 1, "ex": 68, "re": 53}, {"m": "WTI", "board": "Commodity & crypto", "mdl": "JM", "thin": false, "yrs": 14.6, "hist": 20.3, "need": 5.7, "auc": 0.571, "profit": 3.494, "out": 0.1376, "fl": 3.6, "hold": 69, "n": 6, "miss": 3, "ex": 268, "re": 12}, {"m": "SILVER", "board": "Commodity & crypto", "mdl": "VM", "thin": false, "yrs": 14.6, "hist": 20.3, "need": 5.7, "auc": 0.53, "profit": 0.218, "out": 0.3228, "fl": 5.8, "hold": 43, "n": 5, "miss": 0, "ex": 13, "re": 23}, {"m": "ETH", "board": "Commodity & crypto", "mdl": "JM", "thin": true, "yrs": 3.6, "hist": 8.8, "need": 5.1, "auc": 0.485, "profit": 0.491, "out": 0.6578, "fl": 1.1, "hold": 188, "n": 3, "miss": 0, "ex": 46, "re": 53}];
-const V13_NAMES = {"HK0005": "HSBC", "HK0388": "HKEX", "HK0700": "Tencent", "HK0941": "China Mobile", "HK0939": "CCB", "HK1800": "China Comm Const", "HK1810": "Xiaomi", "HK9988": "Alibaba", "SMH": "SMH (semis)", "WTI": "WTI oil", "SILVER": "Silver", "GOLD": "Gold", "BTC": "Bitcoin", "ETH": "Ethereum"};
+const V13_ALL = [{"m": "NDX", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 27.6, "hist": 40.9, "need": 13.3, "auc": 0.794, "profit": 2.559, "plcb": 100.0, "out": 0.1658, "fl": 3.0, "hold": 84, "n": 6, "miss": 3, "ex": 41, "re": 10}, {"m": "SPX", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.731, "profit": 0.831, "plcb": 99.7, "out": 0.1583, "fl": 1.4, "hold": 169, "n": 4, "miss": 0, "ex": 58, "re": 40}, {"m": "FTSE", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 22.6, "hist": 27.6, "need": 5.0, "auc": 0.641, "profit": 0.635, "plcb": 94.7, "out": 0.1694, "fl": 4.2, "hold": 60, "n": 3, "miss": 0, "ex": 87, "re": 61}, {"m": "EWS", "board": "Global indexes", "mdl": "JM", "thin": false, "yrs": 24.6, "hist": 29.6, "need": 5.0, "auc": 0.635, "profit": 0.678, "plcb": 100.0, "out": 0.1911, "fl": 3.0, "hold": 84, "n": 6, "miss": 0, "ex": 102, "re": 30}, {"m": "HSI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 24.6, "need": 8.0, "auc": 0.627, "profit": 0.923, "plcb": 87.3, "out": 0.2591, "fl": 3.5, "hold": 69, "n": 4, "miss": 0, "ex": 64, "re": 50}, {"m": "KOSPI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 24.6, "hist": 29.7, "need": 5.1, "auc": 0.625, "profit": 0.635, "plcb": 100.0, "out": 0.1713, "fl": 2.9, "hold": 84, "n": 7, "miss": 0, "ex": 76, "re": 37}, {"m": "NIKKEI", "board": "Global indexes", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 24.2, "need": 7.6, "auc": 0.612, "profit": 0.409, "plcb": 77.7, "out": 0.1914, "fl": 5.0, "hold": 48, "n": 5, "miss": 0, "ex": 12, "re": 29}, {"m": "AAPL", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.695, "profit": 0.297, "plcb": 61.3, "out": 0.2266, "fl": 4.0, "hold": 62, "n": 14, "miss": 0, "ex": 28, "re": 17}, {"m": "ARKQ", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 7.6, "hist": 11.9, "need": 4.3, "auc": 0.682, "profit": 0.876, "plcb": 95.7, "out": 0.383, "fl": 8.3, "hold": 30, "n": 5, "miss": 0, "ex": 8, "re": 13}, {"m": "META", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 9.6, "hist": 14.2, "need": 4.6, "auc": 0.679, "profit": 1.319, "plcb": 96.3, "out": 0.2656, "fl": 2.2, "hold": 110, "n": 6, "miss": 1, "ex": 53, "re": 62}, {"m": "AMZN", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 23.6, "hist": 29.2, "need": 5.6, "auc": 0.642, "profit": 0.296, "plcb": 24.0, "out": 0.1847, "fl": 2.6, "hold": 94, "n": 12, "miss": 5, "ex": 57, "re": 17}, {"m": "MU", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 41.6, "need": 14.0, "auc": 0.636, "profit": 1.604, "plcb": 73.3, "out": 0.4247, "fl": 4.0, "hold": 62, "n": 19, "miss": 3, "ex": 27, "re": 31}, {"m": "GOOGL", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 22.0, "need": 5.4, "auc": 0.634, "profit": 0.403, "plcb": 98.0, "out": 0.2041, "fl": 5.7, "hold": 44, "n": 9, "miss": 1, "ex": 28, "re": 29}, {"m": "NVDA", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 22.6, "hist": 27.5, "need": 4.9, "auc": 0.633, "profit": 0.633, "plcb": 86.7, "out": 0.2401, "fl": 3.1, "hold": 80, "n": 14, "miss": 5, "ex": 22, "re": 22}, {"m": "SMH", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 20.6, "hist": 26.2, "need": 5.6, "auc": 0.628, "profit": 0.425, "plcb": 97.3, "out": 0.2071, "fl": 3.5, "hold": 70, "n": 9, "miss": 1, "ex": 44, "re": 45}, {"m": "MSFT", "board": "US tech", "mdl": "VM", "thin": false, "yrs": 27.6, "hist": 40.4, "need": 12.8, "auc": 0.625, "profit": 0.925, "plcb": 99.3, "out": 0.2269, "fl": 3.9, "hold": 64, "n": 8, "miss": 1, "ex": 57, "re": 31}, {"m": "TSLA", "board": "US tech", "mdl": "JM", "thin": false, "yrs": 11.6, "hist": 16.1, "need": 4.5, "auc": 0.594, "profit": 0.186, "plcb": 44.0, "out": 0.4998, "fl": 2.3, "hold": 104, "n": 8, "miss": 2, "ex": 20, "re": 20}, {"m": "HK0939", "board": "Hong Kong", "mdl": "JM", "thin": false, "yrs": 10.6, "hist": 15.6, "need": 5.0, "auc": 0.808, "profit": 0.591, "plcb": 98.7, "out": 0.5738, "fl": 1.1, "hold": 201, "n": 3, "miss": 0, "ex": 0, "re": 58}, {"m": "HK9988", "board": "Hong Kong", "mdl": "VM", "thin": true, "yrs": 6.6, "hist": 11.9, "need": 5.3, "auc": 0.717, "profit": 1.949, "plcb": 58.0, "out": 0.4837, "fl": 6.5, "hold": 37, "n": 4, "miss": 0, "ex": 16, "re": 20}, {"m": "HK0388", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 12.6, "hist": 17.6, "need": 5.0, "auc": 0.645, "profit": 0.495, "plcb": 78.3, "out": 0.2987, "fl": 6.2, "hold": 39, "n": 4, "miss": 0, "ex": 13, "re": 34}, {"m": "HK0700", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.642, "profit": 0.485, "plcb": 69.7, "out": 0.2617, "fl": 3.8, "hold": 64, "n": 9, "miss": 1, "ex": 40, "re": 21}, {"m": "HK1810", "board": "Hong Kong", "mdl": "VM", "thin": true, "yrs": 3.6, "hist": 8.1, "need": 4.5, "auc": 0.606, "profit": 1.577, "plcb": 100.0, "out": 0.2846, "fl": 3.9, "hold": 59, "n": 5, "miss": 1, "ex": 28, "re": 4}, {"m": "HK0005", "board": "Hong Kong", "mdl": "JM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.588, "profit": 1.035, "plcb": 61.3, "out": 0.1061, "fl": 2.4, "hold": 100, "n": 5, "miss": 1, "ex": 194, "re": 11}, {"m": "HK0941", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 16.6, "hist": 21.6, "need": 5.0, "auc": 0.584, "profit": 0.732, "plcb": 83.7, "out": 0.1426, "fl": 2.9, "hold": 83, "n": 3, "miss": 0, "ex": 116, "re": 16}, {"m": "HK1800", "board": "Hong Kong", "mdl": "VM", "thin": false, "yrs": 12.6, "hist": 17.6, "need": 5.0, "auc": 0.58, "profit": 1.159, "plcb": 44.0, "out": 0.416, "fl": 5.3, "hold": 46, "n": 6, "miss": 0, "ex": 11, "re": 28}, {"m": "BTC", "board": "Commodity & crypto", "mdl": "VM", "thin": false, "yrs": 7.6, "hist": 11.9, "need": 4.3, "auc": 0.622, "profit": 0.838, "plcb": 51.0, "out": 0.3783, "fl": 4.7, "hold": 54, "n": 7, "miss": 1, "ex": 44, "re": 12}, {"m": "GOLD", "board": "Commodity & crypto", "mdl": "JM", "thin": false, "yrs": 12.6, "hist": 18.6, "need": 6.0, "auc": 0.61, "profit": 0.543, "plcb": 12.7, "out": 0.5709, "fl": 4.8, "hold": 51, "n": 3, "miss": 1, "ex": 68, "re": 53}, {"m": "WTI", "board": "Commodity & crypto", "mdl": "JM", "thin": false, "yrs": 14.6, "hist": 20.3, "need": 5.7, "auc": 0.571, "profit": 3.494, "plcb": 98.3, "out": 0.1376, "fl": 3.6, "hold": 69, "n": 6, "miss": 3, "ex": 268, "re": 12}, {"m": "SILVER", "board": "Commodity & crypto", "mdl": "VM", "thin": false, "yrs": 14.6, "hist": 20.3, "need": 5.7, "auc": 0.53, "profit": 0.218, "plcb": 6.7, "out": 0.3228, "fl": 5.8, "hold": 43, "n": 5, "miss": 0, "ex": 13, "re": 23}, {"m": "ETH", "board": "Commodity & crypto", "mdl": "JM", "thin": true, "yrs": 3.6, "hist": 8.8, "need": 5.1, "auc": 0.485, "profit": 0.491, "plcb": 3.0, "out": 0.6578, "fl": 1.1, "hold": 188, "n": 3, "miss": 0, "ex": 46, "re": 53}];
+const V13_NAMES = {"HK0005": "HSBC", "HK0388": "HKEX", "HK0700": "Tencent", "HK0941": "China Mobile", "HK0939": "CCB", "HK1800": "China Comm Const", "HK1810": "Xiaomi", "HK9988": "Alibaba", "SMH": "SMH (semis)", "WTI": "WTI oil", "SILVER": "Silver", "GOLD": "Gold", "BTC": "Bitcoin", "ETH": "Ethereum", "EWS": "Singapore (EWS)"};
 // rows for THIS page only - the four boards share the V13 suffix, so the table is
 // selected by which markets are actually loaded, not by a variant string.
 // KEYS is Object.keys(DATA) = the order markets were passed to the builder = the tab
@@ -228,39 +228,119 @@ function strengthOf(sym) {
   // measures. NDX slept through 3 of 6 and still avoided 47% of the loss; the three
   // it missed were shallow and fast. Counting both double-counted the same fact.
   //
-  // AUC contributes no points - the score is money only. It sets a CEILING, graded
-  // rather than a single cut-off: weak detection should lower the rating in
-  // proportion, not fall off a cliff. A binary gate left ETH at Fair on an AUC of
-  // 0.488 - worse than a coin flip - purely because its protection looked tidy.
+  // ---- REPLACED 2026-08-09 (user). Strength now answers: IS THE TIMING REAL? ----
+  //
+  // The money version answered the wrong question twice over. Profit and protection are
+  // already their own columns two cells to the right, so folding them into "strength"
+  // restated what the reader could see, while the question the phrase actually asks -
+  // can I trust this bull/bear call? - went unanswered anywhere on the page.
+  //
+  // It was also measuring the opposite of trust. Across all 31 markets, protection vs
+  // B&H correlates +0.49 with TIME OUT OF MARKET and -0.13 with the placebo: it rewards
+  // absence. A signal in cash half the time "avoids" half the loss whether or not it
+  // timed anything - exactly how ES3.SI earned a Good on two episodes and a
+  // 59th-percentile placebo.
+  //
+  // PLACEBO. Take this market's own published signal, roll it forward by a random
+  // number of days, 300 times, rescoring protection each time. A rolled copy keeps the
+  // exact number of days out, the flip count and the run lengths; the only thing
+  // destroyed is whether it was out at the RIGHT time. The percentile is the share of
+  // those 300 shuffles the real signal beat - 92nd = beat 276 of 300, 50th = a coin.
+  //
+  // EPISODES gate it, because the percentile is an average over this market's own >=20%
+  // declines. On two episodes a 100th percentile is a percentile on almost nothing, and
+  // the money rating had no gate at all.
+  //
+  // AUC is gone from here. Its rank correlation with the placebo across markets is
+  // +0.099 - no information about whether a result is real. It survives only in
+  // build_boards' JM-vs-VM tiebreak, where it compares two models on IDENTICAL bars and
+  // the within-market correlation is a genuine +0.423. Different question.
+  //
+  // THIS RATING NO LONGER CLAIMS THE SIGNAL IS WORTH ANYTHING. SMH reads Strong on a
+  // 95th percentile over 9 episodes while avoiding 9% of the loss and returning 0.46x.
+  // That is the right reading of a real but tiny edge, and it is why profit and
+  // protection sit BESIDE it rather than inside it.
+  // ---- REPLACED AGAIN 2026-08-10 (user): "B-loose". MONEY SCORES, EVIDENCE ONLY CAPS ----
+  //
+  // Three designs existed between v16 and v17. Scored against each market's HOLD-TWIN - its
+  // own average exposure held as a CONSTANT position, the only exposure-fair yardstick:
+  //
+  //     design                              Strong   Strong beat twin   rho(rating, vs-twin)
+  //     A  money + AUC ceiling  (v13-v16)      4           4/4                 +0.711
+  //     B  money + placebo/episode ceiling     5           5/5                 +0.718
+  //     C  pure placebo + episode gate         10          6/10                +0.451
+  //
+  // C shipped in the first v17 build and is now withdrawn. Its 15 Strong+Good contained
+  // just 7 markets that beat their own twin, and SMH (0.70x twin), GOOGL (0.66x),
+  // KOSPI (0.80x) and EWS (0.85x) all read Strong while losing to simply holding the same
+  // average exposure. Grade COUNT is a choice of cuts, never evidence.
+  //
+  // ONLY 11 OF 30 MARKETS BEAT THEIR HOLD-TWIN AT ALL. That is a hard ceiling on how many
+  // top grades can be correct, and no scale can raise it.
+  //
+  // EVIDENCE NEVER ADDS POINTS. Money sets the tier; the protection placebo and the bear
+  // episode count can only pull it DOWN. That is what stops a confirmed-but-worthless edge
+  // reading as a recommendation, while still demoting money earned by absence rather than
+  // timing - HK9988 Strong->Fair on a 59th-percentile placebo, GOLD Fair->Poor, TSLA->Weak.
+  //
+  // Money cuts LOOSENED from v16's [5.5, 4.0, 2.5, 1.0] to [5.0, 3.5, 2.5, 1.0] (user):
+  // 10 markets in the top two tiers instead of 9, all 6 Strongs still beating their twin,
+  // ordering unchanged (+0.714 vs +0.718). Loosening further to 8 Strong costs both the hit
+  // rate (6/8) and the ordering (+0.590), so this is where it stops.
+  //
+  // NO AUC LEG. v16 capped on AUC and that is refuted: AUC's rank correlation with the
+  // placebo BETWEEN markets is +0.099, and rating a market in isolation is exactly the
+  // between-market use. The +0.423 holds only WITHIN market, comparing two models on
+  // identical bars - build_boards' JM-vs-VM tiebreak, a different question. The AUC ceiling
+  // was also suppressing MSFT, HK1810 and WTI on a reading that means nothing across markets.
+  //
+  // CAVEAT, recorded so it is not forgotten: the hold-twin test is not neutral. Any design
+  // carrying realised money in its inputs orders realised money better, which favours this
+  // one by construction. What would settle it is an out-of-sample test - does a period-1
+  // rating predict period-2 performance - and NO design here has passed that.
   const d = V13_BYSYM[sym], prot = protOf(sym);
-  if (!d || prot == null) return null;
+  if (!d || prot == null || d.plcb == null || d.n == null) return null;
   const band = (x, cuts) => {
     for (let k = 0; k < cuts.length; k++) if (x >= cuts[k]) return 4 - k * 0.5;
     return 0;
   };
   const sc = band(d.profit, [1.50, 1.20, 1.00, 0.90, 0.80, 0.65, 0.50, 0.35])
            + band(prot,     [0.60, 0.50, 0.45, 0.40, 0.35, 0.28, 0.20, 0.10]);
-  const TIERS = [["Strong", 5.5, "var(--up)", 700], ["Good", 4.0, "var(--up)", 500],
-                 ["Fair", 2.5, "var(--amber)", 600], ["Weak", 1.0, "var(--down)", 500],
-                 ["Poor", 0, "var(--down)", 700]];
-  // AUC ceiling: >=0.65 may reach Strong, 0.60-0.65 Good, 0.55-0.60 Fair, 0.525-0.55
-  // Weak, below that Poor. 0.65 keeps a real gap above Good's 0.60 floor; at 0.60 the
-  // two ceilings coincide and nothing could ever be capped AT Good.
-  const ceil = d.auc >= 0.650 ? 0 : d.auc >= 0.600 ? 1 : d.auc >= 0.550 ? 2
-             : d.auc >= 0.525 ? 3 : 4;
-  let t = Math.max(TIERS.findIndex(x => sc >= x[1]), ceil);
-  const [label, , color, wt] = TIERS[t];
+  const TIERS = [["Strong", "var(--up)", 700], ["Good", "var(--up)", 500],
+                 ["Fair", "var(--amber)", 600], ["Weak", "var(--down)", 500],
+                 ["Poor", "var(--down)", 700]];
+  const byMoney    = [5.0, 3.5, 2.5, 1.0, 0].findIndex(c => sc >= c);
+  const byPlacebo  = d.plcb >= 90 ? 0 : d.plcb >= 75 ? 1 : d.plcb >= 50 ? 2
+                   : d.plcb >= 25 ? 3 : 4;
+  const byEpisodes = d.n >= 5 ? 0 : d.n >= 4 ? 1 : d.n >= 3 ? 2 : 3;
+  const t = Math.max(byMoney, byPlacebo, byEpisodes);   // ceilings only ever DEMOTE
+  const [label, color, wt] = TIERS[t];
+  const eps = `${d.n} bear ${d.n === 1 ? "episode" : "episodes"}`;
+  const NOTE = {
+    Strong: "beats holding and protects strongly in bears",
+    Good: "close to holding, and clearly protective in bears",
+    Fair: "cushions bears but gives up upside",
+    Weak: "little advantage over simply holding",
+    Poor: "no useful edge on either profit or protection",
+  };
+  // When a ceiling binds, say WHICH one - the money note would otherwise describe a tier
+  // the market did not earn on money at all.
+  const capped = t > byMoney;
+  const epBinds = byEpisodes >= byPlacebo;
+  const why = !capped ? NOTE[label]
+            : epBinds ? `capped &mdash; only ${eps} to judge on`
+                      : `capped &mdash; timing beat only ${Math.round(d.plcb)}% of its re-timings`;
   const short = d.thin ? ` &middot; only ${d.yrs}y of forecast so far` : "";
-  const NOTE = { Strong: "beats holding and protects strongly in bears",
-                 Good: "close to holding, and clearly protective in bears",
-                 Fair: "cushions bears but gives up upside",
-                 Weak: "little advantage over simply holding",
-                 Poor: "no useful edge on either profit or protection" };
-  return { label, color, weight: wt, thin: d.thin, score: sc, note: NOTE[label] + short };
+  return { label, color, weight: wt, thin: d.thin, score: sc, note: why + short };
 }
 
 const first = DATA[KEYS.find(k => !DATA[k].ref_only)];
-const BBM = new Set(["V13", "V14", "V15", "V16"]);   // variants that ARE the composite Bull Bear Model
+// Variants that ARE the composite Bull Bear Model. ADD EVERY NEW VARIANT HERE **AND** to
+// the `modelCards` order list further down. The performance table lives inside diagV13,
+// which is only built when BBM.has(SUFFIX) - so a missing entry silently drops the whole
+// board section with no error and no failed build. V17 rendered blank for exactly this
+// reason (2026-08-10); only the headless-DOM verification caught it.
+const BBM = new Set(["V13", "V14", "V15", "V16", "V17"]);
 const tagOf = r => (BBM.has(r.variant) ? "BBM_" : "JM_") + (r.variant ?? "BL");
 // The tile always displays P(flip AWAY from the displayed signal): p_bear is
 // the raw bear-proximity (0% = bull centroid, 100% = bear centroid), so while
@@ -268,8 +348,24 @@ const tagOf = r => (BBM.has(r.variant) ? "BBM_" : "JM_") + (r.variant ?? "BL");
 // it is BEAR the flip-to-bull chance is 100−p_bear. Displaying raw p_bear in
 // bear states was a real bug (GOLD, deep in bear at p_bear 73%, showed "Flip
 // to Bull 73% GREEN" when the honest reading is 27% RED - stuck in bear).
+// CAPPED AT 5-95% (user, 2026-08-10). The calibration is isotonic, so a bin in which
+// every training day happened to flip returns exactly 1.000, and the tile printed
+// "100%". A normal reader takes 100% to mean certainty - i.e. that it has ALREADY
+// flipped - which is the opposite of what the tile is for, and "n of n" is not evidence
+// of certainty anyway. GOOGL on 2026-08-07 is the case that surfaced it: published BEAR,
+// tile reading "Flip to Bull 100%". Same argument at the bottom, where 0% would claim a
+// flip is impossible. The clamp is display-only; p_bear is stored unclamped, so the
+// zone thresholds and the stored history are untouched.
+// WIDENED to 1-97% (2026-08-11) now that the number is P(flip within 5 sessions) fitted on
+// (countdown, distance-to-threshold) rather than a saturating 21-day level. The old 5% FLOOR
+// was itself a misreport: with 2+ confirmation days outstanding the measured rate is ~2%, and
+// rounding that up to 5% overstated the quiet end of the scale. The ceiling stays below 100%
+// only because an isotonic bin whose training days all flipped returns exactly 1.000, and
+// "n of n" is not certainty. Display-only; p_bear is stored unclamped.
+const FLIP_MIN = 0.01, FLIP_MAX = 0.97;
 const flipPct = (stateIsBull, pBear) =>
-  pBear == null ? null : (stateIsBull ? pBear : 1 - pBear);
+  pBear == null ? null
+    : Math.min(FLIP_MAX, Math.max(FLIP_MIN, stateIsBull ? pBear : 1 - pBear));
 function flipZone(currentState, pBear) {
   if (pBear == null) return null;
   const isBull = currentState === "bull";
@@ -296,6 +392,10 @@ function flipZone(currentState, pBear) {
 document.getElementById("sub").innerHTML =
   `Daily <b>bull / bear</b> market signal — fully invested in BULL, 3-month T-bills in BEAR.
   First dot: green = in the market, red = out. Second dot: flip-risk traffic light (green/amber/red).
+  The <b>Flip to</b> tile is the measured chance the signal turns <b>soon</b> — high reads as
+  imminent, low as weeks away — beside the exact count of confirmation days still outstanding.
+  A flip needs 2 consecutive model-bear days to publish bear, 3 to publish bull, so with 2 or
+  more still outstanding it <b>cannot</b> turn tomorrow however high the percentage.
   How the signal is made: see the <b>Model</b> tab.`;
 
 // ---------- tabs ----------
@@ -389,6 +489,8 @@ const TRAIN_NOTE = {
   HSI: " (volume data clean from here)", HSCEI: " (volume data clean from here)",
   NIKKEI: " (volume data clean from here)", FTSE: " (volume data clean from here)",
   GOLD: " (COMEX futures data start)", ARKQ: " (ETF inception)",
+  STI: " (volume data clean from here; ^STI itself is unusable, see below)",
+  EWS: " (volume data clean from here)",
 };
 // NDQ reference for the Era Performance card: prefer the production (non-BL)
 // NDX payload whatever its variant - hardcoding a variant here (it once said
@@ -465,8 +567,28 @@ function buildPanel(k, r) {
   // p_bear_1w = iloc[-6] / p_bear_2w = iloc[-11] convention).
   const flip1w = flipPct(r.state[Math.max(LAST - 5, 0)] === 0, sig.p_bear_1w);
   const flip2w = flipPct(r.state[Math.max(LAST - 10, 0)] === 0, sig.p_bear_2w);
+  // THE HORIZON IS DELIBERATELY OFF THE LABEL (user, 2026-08-11), reversing the 08-10 note
+  // that said it must stay. It only ever had to be there because the old number was a
+  // 21-day level that saturated - it read 100% two days out AND one day out, so the label
+  // was carrying meaning the number had lost. The number now encodes urgency by itself:
+  // median sessions-to-flip runs 132 / 55 / 34 / 19 / 14 / 8 / 2 / 1 down the scale, so a
+  // reader takes 93% as "tomorrow" and 20% as "weeks away" and is right both times. At the
+  // top of the range the 5-session figure IS a next-day figure - 89.6% next session against
+  // 93.8% within five. See flip_calibrate.py.
+  //
+  // The COUNTDOWN line carries what a horizon label never could: with 2+ confirmation days
+  // outstanding a flip tomorrow is not unlikely, it is impossible (0.000% over 123,400
+  // market-days). It is also the part that visibly reverts when a setup breaks - "1 of 2
+  // confirmed" falling back to "0 of 2" - which the percentage alone hides.
+  const fNeed = sig.flip_need, fReq = sig.flip_req;
+  const tgtWord = r.current_state === "bull" ? "bear" : "bull";
+  const cdown = (fNeed == null || fReq == null) ? ""
+    : fNeed <= 0 ? "confirmed &mdash; flip publishing"
+    : `${fReq - fNeed} of ${fReq} ${tgtWord} days confirmed`
+      + (fNeed >= 2 ? " &middot; cannot flip tomorrow" : " &middot; one more does it");
   const flipTile = `<div class="tile"><div class="lbl">Flip to ${r.current_state === "bull" ? "Bear" : "Bull"}</div>
     <div class="val" ${zone ? `style="color:${zone.color}"` : ""}>${zone ? `${zone.name} · ${pctu(zone.pct, 0)}` : "–"}</div>
+    ${cdown ? `<div class="note">${cdown}</div>` : ""}
     <div class="note">1&thinsp;wk ago ${pctu(flip1w, 0)} · 2&thinsp;wk ago ${pctu(flip2w, 0)}</div></div>`;
 
   const t0 = sig.trade ?? {};
@@ -872,25 +994,22 @@ function buildPanel(k, r) {
         <tr><td class="l"><b>Model</b></td><td class="l">Which of the two models runs it &mdash;
           <b style="color:var(--accent)">JM</b> the Jump Model, <b style="color:var(--amber)">VM</b>
           the Volatility Model. Picked by the rule below, never a blend.</td></tr>
-        <tr><td class="l"><b>Signal strength</b></td><td class="l">Overall rating out of 8:
-          <b>profit vs B&amp;H and loss vs B&amp;H, weighted equally</b>, each scored 0&ndash;4 on
-          an eight-step scale. Those two are what matter &mdash; what it earns, and what it
-          saves you.
-          <b style="color:var(--up)">Strong</b> 6+ &middot;
-          <b style="color:var(--up);font-weight:500">Good</b> 4.5+ &middot;
-          <b style="color:var(--amber)">Fair</b> 3+ &middot;
-          <b style="color:var(--down);font-weight:500">Weak</b> 1.5+ &middot;
-          <b style="color:var(--down)">Poor</b> below that.
-          AUC scores no points but sets a <b>ceiling</b> &mdash; see the scoring box below.
-          If the model cannot separate bull from bear, a flattering loss ratio is only
-          the arithmetic of sitting out.</td></tr>
+        <tr><td class="l"><b>Signal strength</b></td><td class="l">What the timing was
+          <b>worth</b>, then <b>capped by whether it was real</b>. Profit and protection vs
+          buy-and-hold set the tier; two evidence tests can then only pull it
+          <i>down</i>, never up &mdash; how many of 300 re-timings of itself the signal beat,
+          and how many bear markets it has actually been through. So a market that made
+          money by simply being absent gets marked down, and one whose timing is genuine but
+          tiny cannot be promoted. See the scoring box below.
+          It describes the record to date and is <b>not a forecast</b>.</td></tr>
         <tr><td class="l"><b>AUC</b></td><td class="l">Area under the curve. Given one bull day
-          and one bear day, how reliably the model tells the two apart.
-          <b>This is the primary measure of model performance</b>, and the key criterion for
-          choosing between JM and VM. <b>0.50 is a coin flip</b>; <b>below 0.60 is marginal</b>;
-          0.70 and above is strong. It is measured against this market&rsquo;s <i>own</i> &ge;20%
-          declines, and it counts days rather than money &mdash; a signal can score well here and
-          still lose.</td></tr>
+          and one bear day, how reliably the model tells the two apart. <b>0.50 is a coin
+          flip.</b> Measured against this market&rsquo;s <i>own</i> &ge;20% declines.
+          <b>It scores nothing here</b> and is shown for reference only: it counts days
+          rather than money, and across these markets a high AUC has turned out to carry
+          no relation to whether the timing survives the shuffle test &mdash; the highest AUC
+          on any board has sat beside one of the weakest. Its one live use is inside the
+          rule below, comparing the two models on identical data.</td></tr>
         <tr><td class="l"><b>Profit vs B&amp;H</b></td><td class="l">Final value against simply
           holding, over the whole test period. <b>Above 1.00&times; it ended ahead</b>; below,
           behind. <b>Higher is better.</b></td></tr>
@@ -925,37 +1044,45 @@ function buildPanel(k, r) {
       <div style="margin-top:14px;padding:11px 13px;border:1px solid var(--border);
         border-radius:9px;background:var(--bg)">
         <b style="font-size:12px">How signal strength is scored</b>
-        <div class="fmlnote" style="margin:3px 0 7px">Two numbers decide it &mdash; what the
-          model <b>earns</b> and what it <b>saves</b> &mdash; weighted equally, 0&ndash;4 each.
-          Both run the same way: <b>higher is better</b>.</div>
+        <div class="fmlnote" style="margin:3px 0 7px"><b>Money scores. Evidence only caps.</b>
+          Profit and protection vs buy-and-hold each earn 0&ndash;4 points and set the tier.
+          Two evidence tests then act as <b>ceilings</b> &mdash; they can pull the rating down
+          but <i>never</i> lift it. So money made by sitting in cash gets marked down, and
+          timing that is genuine but tiny cannot be promoted.</div>
+        <div class="fmlnote" style="margin:0 0 7px">The first ceiling is the re-timing test:
+          take the signal and <b>shift it forward by a random number of days, 300 times</b>,
+          re-scoring each copy. Every copy keeps the same number of days out, the same number
+          of flips and the same holding lengths &mdash; the <i>only</i> thing lost is whether
+          it was out at the <b>right</b> time. The second is simply how many bear markets the
+          signal has actually lived through.</div>
         <div class="tblwrap"><table class="fml">
-          <thead><tr><th></th><th>4.0</th><th>3.5</th><th>3.0</th><th>2.5</th><th>2.0</th>
-            <th>1.5</th><th>1.0</th><th>0.5</th><th>0</th></tr></thead>
+          <thead><tr><th></th><th>Strong</th><th>Good</th><th>Fair</th><th>Weak</th><th>Poor</th></tr></thead>
           <tbody>
-          <tr><td class="k">Profit vs B&amp;H<br><span style="font-weight:400;opacity:.6">higher better</span></td>
-            <td>&ge;1.50</td><td>&ge;1.20</td><td>&ge;1.00</td><td>&ge;0.90</td><td>&ge;0.80</td>
-            <td>&ge;0.65</td><td>&ge;0.50</td><td>&ge;0.35</td><td>below</td></tr>
-          <tr><td class="k">Protection vs B&amp;H<br><span style="font-weight:400;opacity:.6">higher better</span></td>
-            <td>&ge;60%</td><td>&ge;50%</td><td>&ge;45%</td><td>&ge;40%</td><td>&ge;35%</td>
-            <td>&ge;28%</td><td>&ge;20%</td><td>&ge;10%</td><td>below</td></tr>
+          <tr><td class="k">Money score<br><span style="font-weight:400;opacity:.6">profit + protection, 0&ndash;4 each</span></td>
+            <td>&ge;5.0</td><td>&ge;3.5</td><td>&ge;2.5</td><td>&ge;1.0</td><td>below</td></tr>
+          <tr><td class="k">Beat this many<br><span style="font-weight:400;opacity:.6">of 300 shuffles &mdash; caps only</span></td>
+            <td>&ge;270</td><td>&ge;225</td><td>&ge;150</td><td>&ge;75</td><td>below</td></tr>
+          <tr><td class="k">Bear episodes<br><span style="font-weight:400;opacity:.6">caps only</span></td>
+            <td>5+</td><td>4</td><td>3</td><td>1&ndash;2</td><td>&mdash;</td></tr>
           </tbody></table></div>
-        <div class="fmlnote"><b>Score = profit + protection</b>, out of 8 &nbsp;&rarr;&nbsp;
-          <b style="color:var(--up)">Strong</b> 5.5+ &middot;
-          <b style="color:var(--up);font-weight:500">Good</b> 4.0+ &middot;
-          <b style="color:var(--amber)">Fair</b> 2.5+ &middot;
-          <b style="color:var(--down);font-weight:500">Weak</b> 1.0+ &middot;
-          <b style="color:var(--down)">Poor</b> below.</div>
-        <div class="fmlnote"><b>AUC sets a ceiling</b> and scores no points:
-          <b>0.65+</b> may reach Strong &middot; <b>0.60&ndash;0.65</b> Good &middot;
-          <b>0.55&ndash;0.60</b> Fair &middot; <b>0.525&ndash;0.55</b> Weak &middot;
-          <b>below 0.525</b> Poor. <b>The rating is the lower of the two</b> &mdash; so a
-          market can score 6.5 on money and still read Good if it cannot tell bull from
-          bear. All cut-offs are a judgement call, not a tested threshold, and a higher
-          tier does not change the two numbers behind it.</div>
+        <div class="fmlnote"><b>The rating is the weakest of the three rows.</b> A market that
+          scores 5.5 on money but beat only 150 of 300 shuffles is
+          <b style="color:var(--amber);font-weight:500">Fair</b>, because at that percentile the
+          money came from being absent rather than from calling the turns. Equally, beating
+          300 of 300 across nine bear markets does <i>not</i> make a signal Strong if it
+          finished at 0.41&times; buy-and-hold &mdash; real and negligible stays low.</div>
+        <div class="fmlnote"><b>Only 11 of these markets end ahead of holding the same average
+          exposure as a constant position</b>, which is a hard limit on how many top grades can
+          be deserved. AUC is shown for reference but scores nothing here: across markets it
+          carries no relation to whether a result survives the shuffle test, and its only live
+          use is picking between the two models on identical data. Cut-offs are a judgement
+          call, not a tested threshold, and no rating here has been shown to
+          <i>predict</i> future performance.</div>
       </div>
       <b>The short version:</b> nearly every market protects to some degree in a bear
-      &mdash; but only a handful end ahead of holding. Read this as a tool for
-      <b>smaller drawdowns</b>, not bigger returns.
+      &mdash; but only a handful end ahead of holding, and fewer still can show the
+      protection came from timing. Read this as a tool for <b>smaller drawdowns</b>, not
+      bigger returns.
     </div></div>` : "";
 
   const ruleSection = `<tr><td class="l" style="font-weight:650">Signal generation</td>
@@ -1113,9 +1240,10 @@ function buildPanel(k, r) {
         10% gap reads as a full alarm<br>
         &bull; <b>Volume damper</b> &mdash; if the tape is calm <i>and</i> most volume is on
         up-days, the alarm is dialled back toward zero<br>
-        Publishes bear at <b>&ge; 0.60</b>, with no confirmation delay &mdash; exactly the signal
-        that was tested. Its flip-risk light is <b>calibrated against history</b> rather than shown
-        raw, because the alarm saturates and would otherwise read a permanent 0%.</td></tr>
+        Turns bear at <b>&ge; 0.60</b>, then publishes through the <b>same confirmation gate as
+        the Jump Model</b> &mdash; 2 consecutive days to publish bear, 3 to publish bull. (An
+        earlier version of this note said &ldquo;no confirmation delay&rdquo;; that described the
+        v13 configuration and was wrong from v16 onward.)</td></tr>
       <tr><td class="l" style="font-weight:650">What it buys</td>
         <td class="l"><b>Protection, not return.</b> Across the markets tested, protection survives
         the re-timing test far more often than capture does. Expect smaller drawdowns rather than a
@@ -1496,7 +1624,9 @@ for (const k of KEYS) if (!DATA[k].ref_only) buildPanel(k, DATA[k]);
   }
   const mp = document.createElement("div");
   mp.className = "panel"; mp.id = "panel-model";
-  const modelCards = ["BL","V1","V2","V3","V4","V5","V6","V7","V9","V10","V11","V12","V13","V14","V15","V16"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
+  // Display order for the model write-ups. A variant missing from this list renders no
+  // model card at all - keep it in step with the BBM set near the top of the file.
+  const modelCards = ["BL","V1","V2","V3","V4","V5","V6","V7","V9","V10","V11","V12","V13","V14","V15","V16","V17"].filter(s => s in modelCardsBySuffix).map(s => modelCardsBySuffix[s]);
   const boardFirst = KEYS.some(k => BBM.has(DATA[k].variant));
   mp.innerHTML = boardFirst ? modelCards.join("") + histCard
                             : histCard + modelCards.join("");

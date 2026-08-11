@@ -1,10 +1,10 @@
-# Bull-Bear Monitor — BBM v16
+# Bull-Bear Monitor — BBM v17
 
-An IN/OUT market-regime signal for 29 markets, published as four linked
-self-contained dashboards (BBM v16, built 2026-08-03) served at this repo's
+An IN/OUT market-regime signal for 30 markets, published as four linked
+self-contained dashboards (BBM v17, live 2026-08-11) served at this repo's
 GitHub Pages URL:
 
-- [`dashboard/index.html`](dashboard/index.html) — Global indexes (NDX, SPX, HSI, KOSPI, Nikkei, FTSE)
+- [`dashboard/index.html`](dashboard/index.html) — Global indexes (NDX, SPX, HSI, KOSPI, Nikkei, Singapore/EWS, FTSE)
 - [`dashboard/us.html`](dashboard/us.html) — US tech (AAPL, AMZN, ARKQ, GOOGL, META, MSFT, MU, NVDA, SMH, TSLA)
 - [`dashboard/hk.html`](dashboard/hk.html) — Hong Kong (0005, 0388, 0700, 0939, 0941, 1800, 1810, 9988)
 - [`dashboard/commodity.html`](dashboard/commodity.html) — Commodity & crypto (Gold, Silver, WTI, BTC, ETH)

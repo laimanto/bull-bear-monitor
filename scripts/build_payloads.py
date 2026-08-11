@@ -30,6 +30,8 @@ NAMES = {"NDX": "NASDAQ-100 Index (^NDX)", "HSI": "Hang Seng Index (^HSI)",
          "KOSPI": "KOSPI Composite Index (^KS11)",
          "SPX": "S&P 500 Index (^GSPC)", "HSCEI": "Hang Seng China Enterprises (^HSCEI)",
          "NIKKEI": "Nikkei 225 (^N225)", "FTSE": "FTSE 100 (^FTSE)",
+         "STI": "Straits Times Index (SPDR STI ETF, ES3.SI) - proxy for ^STI",
+         "EWS": "Singapore (iShares MSCI Singapore ETF, EWS) - stands in for ^STI",
          "GOLD": "Gold (COMEX futures, GC=F)", "ARKQ": "ARK Autonomous Tech & Robotics ETF (ARKQ)",
          "MSFT": "Microsoft Corp (MSFT)", "NVDA": "NVIDIA Corp (NVDA)",
          "AAPL": "Apple Inc (AAPL)", "GOOGL": "Alphabet Inc (GOOGL)",
@@ -48,11 +50,17 @@ NAMES = {"NDX": "NASDAQ-100 Index (^NDX)", "HSI": "Hang Seng Index (^HSI)",
          }
 INDEX_SYMS = {"NDX", "HSI", "KOSPI", "SPX", "HSCEI", "NIKKEI", "FTSE"}
 # everything else is price-quoted in its own currency; HK names in HKD, crypto in USD
+# STI sits on the index board but the series IS an ETF share price, ~S$3-4, not an
+# index level - so it takes a currency prefix rather than the bare index formatting,
+# and the prefix says SGD outright because the number is small enough to be mistaken
+# for USD.
+UNITS = {"STI": "S$"}
 
 TRAINING_START = {
     "NDX": "1985-10-02", "SPX": "1985-01-02",
     "HSI": "2002-01-01", "HSCEI": "2001-10-17", "KOSPI": "1996-12-11",
     "NIKKEI": "2002-06-10", "FTSE": "1999-01-04", "GOLD": "2008-01-01",
+    "STI": "2009-01-01", "EWS": "1997-01-01",
     "ARKQ": "2014-09-30", "MSFT": "1986-03-13", "NVDA": "1999-01-22",
 }
 
@@ -328,6 +336,15 @@ def main(sym, variant="V6"):
         # duplicating the thresholds here is how the two would silently drift apart.
         p_bear_hist=([_num(v) for v in df["p_bear"].iloc[-(RECENT_N + 1):]]
                      if "p_bear" in df and len(df) > RECENT_N else None),
+        # The confirmation COUNTDOWN behind the flip number (flip_calibrate.py). `flip_req`
+        # consecutive raw days are needed to publish a flip - 2 for bear, 3 for bull - and
+        # `flip_need` are still outstanding. The tile states this beside the probability
+        # because it is exact where the probability is estimated, and because it is what
+        # visibly reverts when a setup breaks: "1 of 2 confirmed" dropping back to "0 of 2"
+        # is the reader's signal that the move fell apart. It also carries the one fact a
+        # bare percentage cannot - with 2+ outstanding, a flip tomorrow is impossible.
+        flip_need=_num(df["flip_need"].iloc[-1] if "flip_need" in df else None),
+        flip_req=_num(df["flip_req"].iloc[-1] if "flip_req" in df else None),
     )
 
     eq_s = (1 + df["strat_ret"]).cumprod() * 10000
@@ -341,7 +358,7 @@ def main(sym, variant="V6"):
 
     payload = dict(
         symbol=base, variant=variant, full_name=NAMES.get(base, base),
-        unit="" if base in INDEX_SYMS else "$",
+        unit=UNITS.get(base, "" if base in INDEX_SYMS else "$"),
         fixed_lam=(float(df["lam"].iloc[-1]) if df["lam"].nunique() == 1 else None),
         generated=str(pd.Timestamp.now().date()),
         start=str(df.index[0].date()), end=str(df.index[-1].date()),

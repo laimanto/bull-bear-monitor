@@ -50,6 +50,22 @@ TICKERS = {
     "SLV": "silver.csv",    # not SI=F: futures carry 9-13% zero-volume days
     "USO": "wti.csv",       # not CL=F: front-month settled at -$37.63 in 2020
     "BTC-USD": "btc.csv", "ETH-USD": "eth.csv",   # truncated to weekdays below
+    # Singapore (2026-08-09): the SPDR Straits Times Index ETF, NOT ^STI. Yahoo
+    # reports ZERO volume on ^STI for every session of 2008-2012 and most of
+    # 2015-17 (100% of 2008-2011, 93% of 2012, 99.6% of 2016), and both models
+    # are volume-driven, so the index itself cannot be fitted - the same defect
+    # that put SMH on the board in place of ^SOX. ES3.SI tracks STI directly
+    # (daily return correlation 0.937, weekly 0.980) and its volume is clean
+    # from 2009 on (<=1.3% zero-volume in every year since).
+    "ES3.SI": "sti.csv",
+    # ...and the same market seen through a US-listed proxy, carried ALONGSIDE STI for
+    # comparison (user, 2026-08-09). EWS holds MSCI Singapore rather than the STI's 30
+    # names and is quoted in USD on NYSE Arca - weekly return correlation against ^STI
+    # is 0.868, against ES3.SI's 0.980. The currency is NOT what costs it that: SGD/USD
+    # is 6.1% of its weekly variance and removing FX does not improve the match. What
+    # it buys is history: clean volume from 1997 and 6 testable bear episodes against
+    # ES3.SI's 2. See build_regimes.SYMBOLS for the test that decides between them.
+    "EWS": "ews.csv",
 }
 # HK9988 is scored off hk9988_long.csv (BABA spliced to 9988.HK), which is REBUILT
 # from baba.csv + hk9988.csv by splice_hk9988.py - run that after this script.
@@ -101,6 +117,8 @@ SETTLE = {
     "0939.HK": (0, 9, 0), "1800.HK": (0, 9, 0), "1810.HK": (0, 9, 0), "9988.HK": (0, 9, 0),
     # Crypto never closes; a bar dated D is final at 00:00 UTC on D+1
     "BTC-USD": (1, 0, 30), "ETH-USD": (1, 0, 30),
+    "ES3.SI": (0, 10, 0),                        # SGX closes 17:00 SGT = 09:00 UTC
+    "EWS": (0, 21, 30),                          # NYSE Arca, 16:00 ET
 }
 DEFAULT_SETTLE = (1, 22, 30)   # unknown ticker: assume the slowest case
 

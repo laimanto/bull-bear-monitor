@@ -83,6 +83,17 @@ TRADING_DAYS = 252
 # series' own true earliest date; first_test is chosen so the training
 # window contains >=1 real crisis (checked against peak-to-trough returns).
 SYMBOLS = {
+    # --- 10-year decliners, added 2026-08-05 for the defensive board. NOT on any live
+    # board and NOT in BOARDS: these exist so the JM/VM protocol can be scored on
+    # assets that FELL, where "beat buy-and-hold" is a meaningless bar and the real
+    # question is whether the timing beats holding less. first_test = listing + 6y,
+    # the protocol's documented warm-up (10mo features + 2y train + 3y validate).
+    "LUMN": {"etf": "lumn.csv", "index": "lumn.csv", "etf_start": "1985-01-02", "first_test": 1991},
+    "CCL": {"etf": "ccl.csv", "index": "ccl.csv", "etf_start": "1987-07-24", "first_test": 1994},
+    "SIRI": {"etf": "siri.csv", "index": "siri.csv", "etf_start": "1994-09-13", "first_test": 2001},
+    "BIDU": {"etf": "bidu.csv", "index": "bidu.csv", "etf_start": "2005-08-05", "first_test": 2012},
+    "NCLH": {"etf": "nclh.csv", "index": "nclh.csv", "etf_start": "2013-01-18", "first_test": 2019},
+
     "NDX":    dict(etf="ndx.csv",    index="ndx.csv",    etf_start="1985-10-02", first_test=1999),
     "SPX":    dict(etf="gspc.csv",   index="gspc.csv",   etf_start="1985-01-02", first_test=1999),
     "HSI":    dict(etf="hsi.csv",    index="hsi.csv",    etf_start="1986-12-31", first_test=2010),
@@ -90,6 +101,42 @@ SYMBOLS = {
     "KOSPI":  dict(etf="ks11.csv",   index="ks11.csv",   etf_start="1996-12-11", first_test=2002),
     "NIKKEI": dict(etf="nikkei.csv", index="nikkei.csv", etf_start="1985-01-02", first_test=2010),
     "FTSE":   dict(etf="ftse.csv",   index="ftse.csv",   etf_start="1985-01-02", first_test=2004),
+    # Singapore (2026-08-09). The series is the SPDR Straits Times Index ETF (ES3.SI),
+    # NOT ^STI: Yahoo gives ^STI zero volume on every session of 2008-2011, 93% of 2012
+    # and 99.6% of 2016, and that gap sits in the MIDDLE of the history, where VOL_START
+    # (which only truncates from the front) cannot reach it - trimming to the clean 2018+
+    # stretch would leave 8.6 years, less than the protocol's own warm-up. Same defect,
+    # same remedy as SMH standing in for ^SOX. ES3.SI tracks the index directly: daily
+    # return correlation 0.937 against ^STI, weekly 0.980, and it is quoted in SGD on
+    # SGX, so unlike a US-listed proxy it carries no FX or time-zone offset.
+    # Cost of the short series, stated plainly: 12.6 forecast years containing only TWO
+    # >=20% episodes (2015-16 China, and the 2018->COVID slide). Read it as two
+    # observations, not a track record. first_test = VOL_START + 5y, as for the HK names.
+    "STI":    dict(etf="sti.csv",    index="sti.csv",    etf_start="2008-01-02", first_test=2014),
+    # The SAME market through a US-listed proxy, carried as its own row next to STI so
+    # the two can be compared on measured results rather than on priors (user,
+    # 2026-08-09). EWS tracks MSCI Singapore, not the STI's 30 names, and is quoted in
+    # USD on NYSE Arca (weekly correlation to ^STI 0.868, against ES3.SI's 0.980; the
+    # daily figure of 0.569 is almost entirely the time-zone offset - SGX closes 05:00
+    # ET, before the US open).
+    #
+    # The CURRENCY is not the problem, which is worth recording because it is the
+    # obvious thing to assume: SGD/USD is 6.1% of EWS's weekly variance, and stripping
+    # FX out does not improve the match to ES3.SI at all (0.857 de-FX'd vs 0.861 raw).
+    # The residual gap is index composition plus the session offset.
+    #
+    # What EWS buys is record length: clean volume from 1997 gives 24.6 forecast years
+    # spanning SIX >=20% episodes (2002, GFC, 2011, 2015-16, 2018->COVID, 2022) where
+    # ES3.SI has two - and it avoided loss in ALL six (+20% to +78%).
+    #
+    # MEASURED 2026-08-09, and it decides which row to believe: run EWS's published
+    # signal against ES3.SI's OWN returns over the common 2014+ window and it avoids
+    # 14.4% of the loss at the 88th placebo percentile while sitting out only 15% of the
+    # time, where ES3.SI's own signal avoids 4.6% at the 58th percentile and sits out
+    # 42%. The longer record TRANSFERS. ES3.SI's own AUC of 0.815 is the AUC-vs-dollars
+    # trap: it is high because the signal is absent through a long decline, and a
+    # randomly re-timed copy of it scores about as well.
+    "EWS":    dict(etf="ews.csv",    index="ews.csv",    etf_start="1996-03-18", first_test=2002),
     "GOLD":   dict(etf="gold.csv",   index="gold.csv",   etf_start="2000-08-30", first_test=2014),
     "ARKQ":   dict(etf="arkq.csv",   index="arkq.csv",   etf_start="2014-09-30", first_test=2019),
     "MSFT":   dict(etf="msft.csv",   index="msft.csv",   etf_start="1986-03-13", first_test=1999),
@@ -146,6 +193,11 @@ SYMBOLS = {
 VOL_START = {
     "HSI": "2002-01-01", "HSCEI": "2001-10-17", "NIKKEI": "2002-06-10",
     "FTSE": "1999-01-04", "GOLD": "2008-01-01",
+    # ES3.SI listed 2008-01-02 but Yahoo carries zero volume for all of 2008; every
+    # year from 2009 on is <=1.3% zero-volume.
+    "STI": "2009-01-01",
+    # EWS listed 1996-03-18; 1996 carries 1.0% zero-volume days, every year after 0.0%.
+    "EWS": "1997-01-01",
     # HK single names (2026-08-02): each set to the first year after which every later
     # year carries <3% zero-volume days. Yahoo's early HK volume is patchy - HKEX
     # (0388) alone had 52 zero-volume days in 2008.

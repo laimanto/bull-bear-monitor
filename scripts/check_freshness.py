@@ -67,6 +67,11 @@ VENUES = [
     ("Tokyo",       "nikkei.csv", PUBLISHED),
     ("Seoul",       "ks11.csv",   PUBLISHED),
     ("Hong Kong",   "hsi.csv",    PUBLISHED),
+    # NO Singapore venue. The Singapore row is EWS, which trades on NYSE Arca and is
+    # already covered by "US equities" - sti.csv (ES3.SI, on SGX) is downloaded but no
+    # longer feeds a board. Listing SGX here would fail the daily run on Singapore
+    # public holidays, which fall on different days from every other venue, for a file
+    # nothing is built from.
     ("Crypto",      "btc.csv",    PUBLISHED),
     ("Gold",        "gold.csv",   GOLD_PUBLISHED),
 ]

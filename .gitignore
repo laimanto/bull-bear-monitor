@@ -19,6 +19,11 @@
 !/scripts/build_boards.py
 !/scripts/refresh_v13_all.py
 !/scripts/rebuild_daily.py
+# Stage 3 of 7 from v17 on. This whitelist is the ONLY thing that lets a new
+# pipeline module ship: without an entry here the file is silently ignored and
+# the daily run dies on the runner with ModuleNotFoundError while working
+# perfectly on every local machine. Add new stages here as you write them.
+!/scripts/flip_calibrate.py
 !/scripts/configs.py
 !/scripts/decode.py
 !/scripts/cycle_feats.py
