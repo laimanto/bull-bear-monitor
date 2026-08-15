@@ -189,14 +189,18 @@ jobs:
         env:
           ALLOW_STALE: ${{ (github.event.schedule == '0 13 * * 2-6' || inputs.allow_stale) && '1' || '0' }}
 
-      # BBM v16 pipeline, ported from the research repo 2026-08-03 (replacing
-      # the retired JM v7 build). Warm runs do inference only - the fitcache/
+      # The BBM pipeline, ported from the research repo 2026-08-03 as v16
+      # (replacing the retired JM v7 build) and on v17 since 2026-08-11. The
+      # variant is NOT set here - rebuild_daily.py's own VARIANT decides it, so
+      # this step deliberately names no version rather than carrying a second
+      # one that can fall out of step with it, as "v16" here did.
+      # Warm runs do inference only - the fitcache/
       # holds every JumpModel fit, keyed on the training data itself, so a new
       # fit is expected only at the January rollover (one per market). If the
       # cache stops matching the data (e.g. a --full re-download rescaled
       # history), MAX_NEW_FITS aborts the run rather than training for hours
       # in CI - rebuild locally and commit the refreshed fitcache/ instead.
-      - name: Build BBM v16 boards
+      - name: Build the four BBM boards
         if: steps.freshness.outputs.fresh == 'true'
         run: python rebuild_daily.py
         working-directory: scripts

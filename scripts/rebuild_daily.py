@@ -1,4 +1,4 @@
-"""The daily BBM v16 build - one command, run by .github/workflows/daily.yml.
+"""The daily BBM build - one command, run by .github/workflows/daily.yml.
 
 Adapted from the research repo's rebuild_all.py. ORDER MATTERS, and getting it
 wrong has produced silent, plausible-looking wrong pages more than once:
@@ -8,7 +8,7 @@ wrong has produced silent, plausible-looking wrong pages more than once:
                           a NEW fit happens only at the January rollover. The
                           MAX_NEW_FITS env guard aborts if the cache stops
                           matching the data rather than training for hours in CI.
-  2. build_boards.py      JM vs VM per market -> regimes_{M}_V16.csv + metrics
+  2. build_boards.py      JM vs VM per market -> regimes_{M}_{VARIANT}.csv + metrics
   3. flip_calibrate.py    P(flip within 5 sessions) from (countdown, distance) ->
                           overwrites p_bear in every regimes CSV and adds the
                           countdown columns. Pooled ACROSS markets per model

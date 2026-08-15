@@ -54,19 +54,31 @@ trade at close t+1), cash earns the 13-week T-bill while out.
 ## How it runs
 
 - `scripts/update_data.py` — appends missing daily rows to `data/*.csv` (one
-  small yfinance call per ticker; re-fetches the last stored row so a
-  provisional close self-heals). `--full` re-downloads a series from scratch.
-- `scripts/build_regimes.py` — the walk-forward + v6 decode, all 11 markets.
-  Each calendar year's model (scaler + JumpModel + selected jump penalty) is
-  fit **once** and cached in `models/{market}_{stage}_{year}.joblib`; every
-  day within that year is then cheap online inference on the cached model,
-  not a refit. A refit only happens automatically when a new year begins.
-  If `update_data.py --full` ever re-aligns a market's whole history,
-  delete that market's cache files first so every year refits consistently.
-- `scripts/build_payloads.py` — backtests each market's regime file into the
-  dashboard's JSON payload (era performance, named crises, trade log).
-- `scripts/build_dashboard.py` — merges payloads + template into the final
-  standalone HTML.
+  small yfinance call per ticker, 34 of them; re-fetches the last stored row so
+  a provisional close self-heals). A **settlement guard** refuses to store any
+  bar whose session has not provably closed, per venue — that is what keeps
+  partial intraday bars out of the history, and why gold (`GC=F`, Globex
+  settling 17:00 ET on D+1) is structurally a day behind the equity markets.
+  `--full` re-downloads a series from scratch.
+- `scripts/splice_hk9988.py` — rebuilds the derived `data/hk9988_long.csv`
+  (BABA spliced to 9988.HK). Must run after every data refresh or the scored
+  file goes stale.
+- `scripts/check_freshness.py` — fails before the build if any venue is behind,
+  so a green run cannot publish a stale board. `ALLOW_STALE=1` downgrades it to
+  a warning; the last slot of the day sets it, because a venue holiday is
+  indistinguishable from a Yahoo delay and the day still has to publish.
+- `scripts/rebuild_daily.py` — **the whole build, one command**, and the order
+  is load-bearing (its docstring says why each step cannot move):
+  `build_v11` (JM walk-forward) → `build_boards` (JM vs VM per market) →
+  `flip_calibrate` (P(flip within 5 sessions)) → `build_payloads` →
+  `refresh_v13_all` → `build_dashboard` ×4 → **verify**, which renders every
+  page in headless Chrome and asserts on the real DOM. Every past breakage of
+  this template still produced a "successful" build, hence the last step.
+- JumpModel fits live in `fitcache/`, keyed on the training data itself, so
+  daily runs do inference only — expect a new fit once per market at the
+  January rollover. `MAX_NEW_FITS` aborts the run rather than training for
+  hours in CI if the cache stops matching the data; rebuild it locally and
+  commit the refreshed cache instead. VM's combo fits cache in `models/`.
 - `scripts/notify_changes.py` — after the build, lists the markets whose signal
   (bull ↔ bear) or flip-risk light (green/amber/red) moved since the last board
   went out, and the workflow mails that list by opening an issue. The comparison
@@ -76,22 +88,27 @@ trade at close t+1), cash earns the 13-week T-bill while out.
   than copied, and the script fails the run if it cannot find them. To test the
   alert on a quiet day, run the workflow manually with **sample_notice** ticked:
   it mails a marked SAMPLE and leaves the baseline untouched.
-- `.github/workflows/daily.yml` — GitHub Actions, **00:30 UTC Tue-Sat**
-  (~8pm US Eastern Mon-Fri evenings — after the US close AND gold futures'
-  later settlement, hours after Asia/Europe closed): update → rebuild →
-  commit → deploy to GitHub Pages. Manual run: Actions tab → "Daily update &
-  publish" → Run workflow.
+- `.github/workflows/daily.yml` — GitHub Actions, **03:30 UTC Tue-Sat**, the
+  first moment all four venues' day-D bars are both settled and published, with
+  retry slots at 05:30, 07:30 and 13:00 UTC. Sequence: update → freshness gate →
+  rebuild → notify → commit → deploy to GitHub Pages. Manual run: Actions tab →
+  "Daily update & publish" → Run workflow.
+  **"Data not published yet" is a green skip, not a failure** — Yahoo does not
+  publish the BTC-USD bar for day D until ~D+1 07:00-10:00 UTC, so the first two
+  slots structurally cannot pass the gate and the board normally goes out at
+  07:30. A run that finds the data unready therefore ends green having done
+  nothing, which means **a successful run no longer implies a board was
+  published**: the retry gate asks whether `main` carries today's
+  `Daily update <UTC date>` commit. That message is the receipt — do not change
+  its prefix.
 
-Run locally:
+Run locally — one command rebuilds all four boards:
 
 ```
 pip install -r requirements.txt
 cd scripts
-python update_data.py
-python build_regimes.py
-python build_payloads.py
-python build_dashboard.py ../dashboard/index.html NDX SPX HSI HSCEI KOSPI NIKKEI FTSE
-python build_dashboard.py ../dashboard/monitor2.html GOLD ARKQ MSFT NVDA NDX:ref
+python update_data.py && python splice_hk9988.py
+python rebuild_daily.py
 ```
 
 ## One-time repo setup
