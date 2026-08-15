@@ -67,6 +67,15 @@ trade at close t+1), cash earns the 13-week T-bill while out.
   dashboard's JSON payload (era performance, named crises, trade log).
 - `scripts/build_dashboard.py` — merges payloads + template into the final
   standalone HTML.
+- `scripts/notify_changes.py` — after the build, lists the markets whose signal
+  (bull ↔ bear) or flip-risk light (green/amber/red) moved since the last board
+  went out, and the workflow mails that list by opening an issue. The comparison
+  is against `results/signal_state.json`, the readings last reported, so a change
+  is mailed once on the day it appears no matter which cron slots ran. The
+  traffic-light thresholds are parsed out of the template's `flipZone()` rather
+  than copied, and the script fails the run if it cannot find them. To test the
+  alert on a quiet day, run the workflow manually with **sample_notice** ticked:
+  it mails a marked SAMPLE and leaves the baseline untouched.
 - `.github/workflows/daily.yml` — GitHub Actions, **00:30 UTC Tue-Sat**
   (~8pm US Eastern Mon-Fri evenings — after the US close AND gold futures'
   later settlement, hours after Asia/Europe closed): update → rebuild →

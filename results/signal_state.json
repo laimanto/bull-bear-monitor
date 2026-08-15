@@ -1,0 +1,186 @@
+{
+ "variant": "V17",
+ "data_through": "2026-08-14",
+ "markets": {
+  "AAPL": {
+   "state": "BEAR",
+   "zone": "GREEN",
+   "pct": 0.97,
+   "end": "2026-08-14"
+  },
+  "AMZN": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "ARKQ": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "BTC": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.038416075650118175,
+   "end": "2026-08-14"
+  },
+  "ETH": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.08457374830852504,
+   "end": "2026-08-14"
+  },
+  "EWS": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.0121739130434782,
+   "end": "2026-08-14"
+  },
+  "FTSE": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "GOLD": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.1384615384615385,
+   "end": "2026-08-13"
+  },
+  "GOOGL": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.13567567567567562,
+   "end": "2026-08-14"
+  },
+  "HK0005": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.0201438848920863,
+   "end": "2026-08-14"
+  },
+  "HK0388": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.0802204531537048,
+   "end": "2026-08-14"
+  },
+  "HK0700": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.038416075650118175,
+   "end": "2026-08-14"
+  },
+  "HK0939": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.1952191235059761,
+   "end": "2026-08-14"
+  },
+  "HK0941": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "HK1800": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.038416075650118175,
+   "end": "2026-08-14"
+  },
+  "HK1810": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.038416075650118175,
+   "end": "2026-08-14"
+  },
+  "HK9988": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.038416075650118175,
+   "end": "2026-08-14"
+  },
+  "HSI": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.1137724550898203,
+   "end": "2026-08-14"
+  },
+  "KOSPI": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.038416075650118175,
+   "end": "2026-08-14"
+  },
+  "META": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.025283347863993,
+   "end": "2026-08-14"
+  },
+  "MSFT": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.0366541353383458,
+   "end": "2026-08-14"
+  },
+  "MU": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "NDX": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.01,
+   "end": "2026-08-14"
+  },
+  "NIKKEI": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "NVDA": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "SILVER": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.26732673267326734,
+   "end": "2026-08-14"
+  },
+  "SMH": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.014691179737836,
+   "end": "2026-08-14"
+  },
+  "SPX": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.01,
+   "end": "2026-08-14"
+  },
+  "TSLA": {
+   "state": "BEAR",
+   "zone": "RED",
+   "pct": 0.025283347863993,
+   "end": "2026-08-14"
+  },
+  "WTI": {
+   "state": "BULL",
+   "zone": "GREEN",
+   "pct": 0.0201438848920863,
+   "end": "2026-08-14"
+  }
+ }
+}

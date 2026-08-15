@@ -65,12 +65,20 @@ on:
         description: "Publish even if the data is behind (skip the freshness gate)"
         type: boolean
         default: false
+      sample_notice:
+        description: "Also mail a clearly-marked SAMPLE change notice (tests the alert)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
   pages: write
   id-token: write
   actions: read
+  # The change notice is delivered as an issue (user, 2026-08-15): GitHub mails it to
+  # the account's notification address, which needs no SMTP secret and no third-party
+  # mail action. See the notify steps at the end of the job.
+  issues: write
 
 concurrency:
   group: daily-update
@@ -194,6 +202,46 @@ jobs:
         working-directory: scripts
         env:
           MAX_NEW_FITS: "40"
+
+      # Which markets' published readings moved since the last board went out -
+      # bull <-> bear, or the flip-risk light changing colour (user, 2026-08-15).
+      #
+      # THIS RUNS BEFORE THE COMMIT ON PURPOSE. notify_changes.py writes its baseline
+      # (results/signal_state.json) here, but only the commit step below makes that
+      # baseline permanent. So if the notification fails to send, the run goes red, the
+      # baseline is thrown away with the runner, and tomorrow re-detects the same change
+      # - rather than the baseline advancing past a change nobody was told about.
+      #
+      # The `sample_notice` dispatch input mails a marked SAMPLE built from the
+      # committed payloads and leaves the baseline alone, so it needs no fresh data and
+      # runs even when the freshness gate closed the build. That is the supported way to
+      # test the alert - the alternative, committing a wrong baseline so a change
+      # appears, mails a false signal and hides the next real move on those markets.
+      - name: Detect signal / flip-light changes
+        id: changes
+        if: steps.freshness.outputs.fresh == 'true' || inputs.sample_notice
+        run: python notify_changes.py ${{ inputs.sample_notice && '--sample' || '' }}
+        working-directory: scripts
+
+      # Delivered as an issue rather than by SMTP: GitHub mails it to the account's
+      # notification address (laimanto@gmail.com), so there is no app password to store
+      # and nothing to expire. --assignee makes the mail unconditional - it does not
+      # depend on the repo's watch setting. The issues also stand as a dated log of every
+      # signal move; close them at will, nothing reads them back.
+      #
+      # The subject goes through an env var, not ${{ }} interpolation: it is built from
+      # payload contents, and interpolating it straight into the shell would put that
+      # text on the command line.
+      - name: Mail the change list
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ steps.changes.outputs.title }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" \
+            --title "$TITLE" \
+            --body-file change_notice.md \
+            --assignee "${{ github.repository_owner }}"
 
       # The commit message is the receipt the `check` job gates the retry
       # slots on - keep it starting with "Daily update <UTC date>".

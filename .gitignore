@@ -24,6 +24,11 @@
 # the daily run dies on the runner with ModuleNotFoundError while working
 # perfectly on every local machine. Add new stages here as you write them.
 !/scripts/flip_calibrate.py
+# Not a build stage - the workflow runs it after the build to mail the day's signal /
+# flip-light changes. Same trap as above: without this line CI dies on an import it
+# cannot see. Its baseline, results/signal_state.json, ships under the results/*.json
+# rule below, and its output change_notice.md sits at the repo root, which /* ignores.
+!/scripts/notify_changes.py
 !/scripts/configs.py
 !/scripts/decode.py
 !/scripts/cycle_feats.py
