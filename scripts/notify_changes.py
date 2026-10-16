@@ -199,7 +199,7 @@ def strength(d, prot, rules):
 def light(state, p_bear, rules):
     """The tile's flip percentage and traffic-light colour for one market.
 
-    The percentage is inverted for a bear market - it is always "chance of flipping AWAY
+    The percentage is inverted for a bear market - it is always "how close to flipping AWAY
     from where we are" - and that inversion also flips which end of the scale is green.
     Both facts come from flipZone(); this only applies them.
     """
@@ -316,7 +316,7 @@ def notice(moved, data_through, sample=False):
             continue
         _, page = PAGES[board]
         parts.append(f"\n### [{BOARD_TITLE[board]}]({SITE}{page})\n")
-        parts.append("| Market | Signal | Flip light | Chance of flipping "
+        parts.append("| Market | Signal | Flip light | Close to flip "
                      "| Signal strength |")
         parts.append("| --- | --- | --- | --- | --- |")
         for m, was, now in rows:
@@ -329,9 +329,10 @@ def notice(moved, data_through, sample=False):
         "\n---\n"
         "Boards: " + " · ".join(f"[{BOARD_TITLE[b]}]({SITE}{f})"
                                 for b, (_, f) in PAGES.items()) + "\n\n"
-        "*Chance of flipping* is the board's own tile: for a **BULL** market the measured "
-        "chance of turning bear within 5 sessions, for a **BEAR** market the chance of "
-        "turning back to bull. The light is green when that reading is comfortable, red "
+        "*Close to flip* is the board's own tile: how close the signal is to turning — it "
+        "climbs as a flip approaches and reaches 100% on the day it flips. For a **BULL** market it "
+        "measures the road to bear, for a **BEAR** market the road back to bull. It is a "
+        "distance, not a chance. The light is green when that reading is comfortable, red "
         "when the signal is close to going the wrong way.\n\n"
         "*Signal strength* is the board's own **Strong / Good / Fair / Weak / Poor** "
         "rating of that market's whole timing record — what it earned against buy-and-hold "

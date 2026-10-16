@@ -9,9 +9,10 @@ wrong has produced silent, plausible-looking wrong pages more than once:
                           MAX_NEW_FITS env guard aborts if the cache stops
                           matching the data rather than training for hours in CI.
   2. build_boards.py      JM vs VM per market -> regimes_{M}_{VARIANT}.csv + metrics
-  3. flip_calibrate.py    P(flip within 5 sessions) from (countdown, distance) ->
-                          overwrites p_bear in every regimes CSV and adds the
-                          countdown columns. Pooled ACROSS markets per model
+  3. flip_calibrate.py    close to flip, 0-100% (approach to the trigger 0-70,
+                          confirmation days 70-100) -> overwrites p_bear in every
+                          regimes CSV and adds the countdown columns. The
+                          distance scale is pooled ACROSS markets per model
                           family, so it must see every market in one pass and
                           cannot be folded into the per-market loops either side.
   4. build_payloads.py    per-market tab data, INCLUDING loss_vs_bh
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     run([sys.executable, "build_boards.py", f"--variant={VARIANT}"],
         f"2/7 build_boards ({VARIANT}, JM vs VM)")
     run([sys.executable, "flip_calibrate.py", f"--variant={VARIANT}"] + markets,
-        f"3/7 flip_calibrate (P(flip<=5 sessions), pooled per model family)")
+        f"3/7 flip_calibrate (close to flip, scale pooled per model family)")
     run([sys.executable, "build_payloads.py", f"--variant={VARIANT}"] + markets,
         f"4/7 build_payloads ({len(markets)} markets)")
     run([sys.executable, "refresh_v13_all.py", f"--variant={VARIANT}"],

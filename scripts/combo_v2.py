@@ -239,6 +239,18 @@ def build_walkforward(market, close_full, volume_full, first_test, signed=False,
     vm_gap = (ushare.to_numpy() - VM_SHARE_FIXED) / (1 - VM_SHARE_FIXED)
     vm_conf = np.where(vol10 <= VM_CALM, np.clip(vm_gap, 0, 1), 0.0)
     combo_p_bear = np.maximum(np.nan_to_num(vb_conf), np.nan_to_num(ma_conf)) * (1 - np.nan_to_num(vm_conf))
+    # UNCLIPPED core, for the board's "close to flip" reading only (2026-10-16) - it never
+    # touches the alarm or the state. The clipped alarm sits at exactly 0 on 43% of VM days
+    # and exactly 1 on 13%, so every market resting there read the same distance from the
+    # 0.60 line. The raw legs keep going past the clip: MU's 50-day far above its 200-day
+    # and ARKQ's barely above are both alarm 0.00, but not equally far from a bear call.
+    vb_raw = np.nan_to_num((vol10 - vb_calm_arr) / (vb_trig_arr - vb_calm_arr + 1e-9))
+    ma_raw = np.nan_to_num(ma_gap * 10)
+    if sv:
+        _tot = np.nan_to_num(vol_up) + np.nan_to_num(vol_dn) + 1e-9
+        _up = np.clip((np.nan_to_num(vol_up) - np.nan_to_num(vol_dn)) / _tot, 0, 1)
+        vb_raw = np.where(vb_raw > 0, vb_raw * (1 - _up), vb_raw)    # damper shrinks positives only
+    core_raw = np.maximum(vb_raw, ma_raw)
     if sv or svol:
         tot = np.nan_to_num(vol_up) + np.nan_to_num(vol_dn) + 1e-9
         up_dom = np.clip((np.nan_to_num(vol_up) - np.nan_to_num(vol_dn)) / tot, 0, 1)
@@ -255,7 +267,14 @@ def build_walkforward(market, close_full, volume_full, first_test, signed=False,
         add = 0.5 * sell * (1 - up_dom) if svol else 0.0
         combo_p_bear = np.clip(core * (1 - np.nan_to_num(vm_conf)) + add, 0, 1)
     combo_p_bear = np.where(valid, combo_p_bear, np.nan)
+    # Extend the alarm past its clip WITHOUT changing which side of any threshold it is on:
+    # equal to the alarm inside (0, 1); below 0 only where both legs are below zero (alarm
+    # is 0 whatever the damper says); above 1 only where the alarm itself is pinned at 1.
+    p_u = combo_p_bear.copy()
+    p_u = np.where((core_raw < 0) & (combo_p_bear <= 0), core_raw, p_u)
+    p_u = np.where(combo_p_bear >= 1, np.maximum(core_raw, 1.0), p_u)
+    p_u = np.where(valid, p_u, np.nan)
 
     result = pd.DataFrame({"close": close, "ret": ret, "out": out,
-                           "combo_p_bear": combo_p_bear}, index=idx)
+                           "combo_p_bear": combo_p_bear, "combo_p_bear_u": p_u}, index=idx)
     return result[valid]

@@ -70,7 +70,7 @@ trade at close t+1), cash earns the 13-week T-bill while out.
 - `scripts/rebuild_daily.py` — **the whole build, one command**, and the order
   is load-bearing (its docstring says why each step cannot move):
   `build_v11` (JM walk-forward) → `build_boards` (JM vs VM per market) →
-  `flip_calibrate` (P(flip within 5 sessions)) → `build_payloads` →
+  `flip_calibrate` (close to flip, 0-100%) → `build_payloads` →
   `refresh_v13_all` → `build_dashboard` ×4 → **verify**, which renders every
   page in headless Chrome and asserts on the real DOM. Every past breakage of
   this template still produced a "successful" build, hence the last step.

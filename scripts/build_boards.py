@@ -150,8 +150,12 @@ def vm_alarm(m):
     v0 = jm.VOL_START.get(m)
     if v0:
         close, vol = close.loc[v0:], vol.loc[v0:]
-    return cv.build_walkforward(m, close, vol, cfg["first_test"],
-                                sv=VM_CFG[VARIANT]["sv"])["combo_p_bear"]
+    res = cv.build_walkforward(m, close, vol, cfg["first_test"], sv=VM_CFG[VARIANT]["sv"])
+    VM_UNCLIPPED[m] = res["combo_p_bear_u"]          # for flip_calibrate's closeness only
+    return res["combo_p_bear"]
+
+
+VM_UNCLIPPED = {}
 
 
 def vm_state(alarm):
@@ -241,6 +245,8 @@ def build(a, variant):
         # this series, so raw and published now differ here the same way they do for JM.
         d["raw_state"] = (a["alarm"] >= VM_THRESH).astype(int)
         d["vm_alarm"] = a["alarm"]
+        if m in VM_UNCLIPPED:
+            d["vm_alarm_u"] = VM_UNCLIPPED[m].reindex(d.index)
         d["p_bear"] = vcal.calibrate(a["V"], a["alarm"])   # overwritten by flip_calibrate
         d["lam"] = np.nan
     d.to_csv(os.path.join(RESULTS, f"regimes_{m}_{variant}.csv"))

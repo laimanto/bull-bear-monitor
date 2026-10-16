@@ -1,73 +1,55 @@
-"""Honest flip probability for BOTH models: P(the published signal flips soon).
+"""CLOSE TO FLIP: how far along the road to a flip each market is, 0-100%.
 
-WHY THIS REPLACED THE OLD NUMBER (user, 2026-08-10/11)
-------------------------------------------------------
-The tile used to show a 21-day probability. It saturated: GOOGL sat at "Flip to Bull 100%"
-for days while still published BEAR, and capping the display at 95% only hid it. Measured,
-the old number was frozen across days on which the actual proximity was changing - it read
-100% both two days out and one day out, and 96% on a day when three confirmation days were
-still outstanding.
+WHY THIS REPLACED THE 5-SESSION PROBABILITY (user, 2026-10-16)
+-------------------------------------------------------------
+The tile showed P(flip within 5 sessions), fitted isotonic on (countdown, distance). It read
+1% or 4% so often it looked hard-coded - 14 of the 20 VM markets showed one of those two
+numbers on 2026-08-14. Three causes, all measured:
+  1. VM's alarm is CLIPPED: exactly 0 on 43% of days, exactly 1 on 13%. A pinned alarm gives
+     every market the same distance to the 0.60 line, so the same output (1.5% / 3.8%).
+  2. Isotonic regression is a staircase, so nearby inputs share a step.
+  3. Over 5 sessions the honest answer in a quiet market really is ~2% (1.6% of pinned-bull
+     days flip). True, but it cannot tell MU from ARKQ.
 
-The cause is that a single level cannot express this. The published signal only moves when
-the RAW state persists long enough to clear the confirmation gate (bear needs 2 consecutive
-raw-bear days, bull needs 3 - `decode.N_BEAR/N_BULL`). So:
+And the reading the user actually wanted - "as it gets closer to the threshold, the number
+climbs toward 100%" - cannot be a next-day probability at all. Measured on VM:
+    signal right at the line (within 0.02)   crosses next day only 36% - it wobbles
+    crossed, 2+ confirming days outstanding  flips next day 0.000% - the gate forbids it
+    crossed, 1 confirming day outstanding    flips next day 90.5%
+A next-day probability goes 0 -> 0 -> 0 -> 90%. It does not climb; it jumps on the last day.
 
-    P(flip next session) is EXACTLY 0 with 2+ confirmation days outstanding
-    - 0.000% over 123,400 market-days, no exceptions - and 88.0% with 1 outstanding.
+THE READING: a progress measure, not a forecast
+-----------------------------------------------
+    0-70%   APPROACH  the driver's distance to the line that turns the raw state.
+                      70 * (1 - distance / D0), capped at 69 so it never reads "crossed";
+                      past 0.9*D0 (7%) it decays smoothly instead of hitting 0, because
+                      0% reads as "it only just flipped" (user, 2026-10-17).
+   70-100%  CONFIRM   once crossed, each confirming day fills an equal share:
+                      to bear (2 days): 85 -> 100;  to bull (3 days): 80 -> 90 -> 100.
 
-No rescaling of a level can repair that, because the fact is mechanical.
+WHY THE LINE SITS AT 70 (user, 2026-10-16): once the signal crosses, the flip usually goes
+through - 90% of 797 crossings toward bear published, 76% of 932 toward bull. Reaching the
+line is most of the journey, and the confirm steps then land near the real odds (first bull
+crossing reads 80% vs 76% that complete; first bear crossing 85% vs 90%).
 
-THE FIX: two inputs, not one
-----------------------------
-  need  how many consecutive raw days are still outstanding before a flip may publish
-  gap   how far the model's own driver is past the threshold that turns the raw state
+The approach half is SMOOTH because the distance uses the UNCLIPPED driver:
+  VM  `vm_alarm_u` (combo_v2's raw legs carried past the 0/1 clip; equal to the alarm inside
+      (0,1), and on the same side of 0.60 everywhere, so it never contradicts raw_state)
+  JM  p_bear against per-market fitted crossing levels (U to bear, L to bull), refit each
+      January on prior transitions; markets without enough of their own use the pooled JM
+      levels.
+D0 = the 95th percentile of approach distances, per model family, pooled across markets and
+refit each January on prior years only - so a year's scale is fixed once set and the "1 wk
+ago" numbers do not drift. Years before enough history exists use the first fitted scale.
 
-Neither works alone: `need` alone is near-binary (~3% vs 88%), and `gap` alone cannot see
-the gate. Together they give a smooth, fully-populated ladder from ~2% to ~93%:
+IT IS NOT A PROBABILITY and the tile must not call it a chance. At 65% the signal is near
+the line, yet it crosses next day only about a third of the time. The countdown line beside
+it ("1 of 3 bull days confirmed - one more does it") is what states tomorrow exactly.
 
-    P(flip within 5 sessions)      need 3    need 2    need 1
-      driver > 0.35 from threshold     3%        2%         -
-      0.35 - 0.22                      9%        7%         -
-      0.22 - 0.12                     15%       11%         -
-      0.12 - 0.05                     21%       20%       80%
-      within 0.05                     37%       38%       80%
-      already past it                 14%       54%       93%
-
-HORIZON = 5 sessions, and it is deliberately NOT shown on the tile (user, 2026-08-11). The
-number already encodes urgency - median sessions-to-flip runs 132 / 55 / 34 / 19 / 14 / 8 /
-2 / 1 down that ladder - so a reader takes 93% as "tomorrow" and 20% as "not soon", both
-correctly. At the top of the scale the 5-session number IS a next-day number: 89.6% next
-session vs 93.8% within five. The horizon label was only hedging the bottom end, and the
-countdown line on the tile states the mechanical floor far more precisely than a label could.
-
-FITTED PER MODEL FAMILY, POOLED ACROSS MARKETS
----------------------------------------------
-VM is the stronger case and the gap is the MECHANISM there, not a proxy: its raw state is
-literally `alarm >= 0.60`, so distance-to-0.60 determines it. VM's ladder is monotone and
-reaches 81% in the middle band.
-
-JM is weaker and this is a real limitation, not a bug. JM's raw decode is NOT a threshold on
-p_bear - the jump penalty makes it path-dependent, so the two disagree ~11% of days - which
-is why JM's middle band tops out near 27% and its `need 3` column is non-monotone in the raw
-counts. Isotonic enforces monotonicity; JM's gauge is still coarser between the extremes and
-leans on the countdown.
-
-Pooled across markets WITHIN a family because armed days are only ~1.7% of the record, i.e.
-~30-50 per market - far too thin for a per-market fit. Refit every January on prior data
-only, with the label's own 5-session lookahead trimmed off the training tail, exactly as
-vm_calibrate does.
-
-OUTPUT CONVENTION
------------------
-The dashboard computes the displayed number as `stateIsBull ? p_bear : 1 - p_bear`, so to
-make the display equal P(flip away from today's published signal) this writes:
-    bull day  ->  p_bear = P(flip to bear)
-    bear day  ->  p_bear = 1 - P(flip to bull)
-which keeps p_bear's "high = bearish" direction and needs no change to flipPct/flipZone.
-
-The RAW DRIVER is preserved in `p_bear_raw` before p_bear is overwritten, so re-running is
-idempotent and JM's bear-proximity score is not destroyed - the same mistake that was found
-in build_boards' handling of `raw_state`.
+OUTPUT CONVENTION (unchanged, so flipPct / flipZone / p_bear_hist / the mail need no
+re-plumbing): bull day -> p_bear = closeness to bear; bear day -> p_bear = 1 - closeness to
+bull. The raw driver is preserved in `p_bear_raw` before p_bear is overwritten, so re-running
+is idempotent.
 """
 import os
 import sys
@@ -79,16 +61,16 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 warnings.filterwarnings("ignore")
 
-from sklearn.isotonic import IsotonicRegression      # noqa: E402
-
 import build_boards as bb                            # noqa: E402
 import decode as dc                                  # noqa: E402
 
 RESULTS = os.path.join(HERE, "..", "results")
-HORIZON = 5            # sessions; see the module docstring for why 5 and why it is hidden
-MIN_FIT = 400          # pooled rows needed before an isotonic fit is trusted
-MIN_POS = 20           # need some flips AND some non-flips
-MIN_TR = 5             # raw transitions of each kind needed to place a JM threshold
+LINE = 0.70            # where "crossed the trigger" sits on the 0-100 scale
+APPROACH_CAP = 0.69    # the approach half never reads as crossed
+SCALE_Q = 95           # D0 = this percentile of approach distances
+TAIL_X, TAIL_K = 0.9, 0.5   # beyond 0.9*D0 (7%), decay instead of reaching 0
+MIN_SCALE_ROWS = 2000  # pooled approach rows needed before a year's D0 is fitted
+MIN_TR = 5             # raw transitions of each kind needed to place a JM level
 VM_THRESH = bb.VM_THRESH
 
 
@@ -116,33 +98,11 @@ def countdown(pub, raw, n_bear, n_bull):
     return pd.Series(need, index=pub.index), pd.Series(req, index=pub.index)
 
 
-def jm_levels(drv, raw, upto):
-    """(U, L) = median driver value at this market's own prior raw transitions."""
+def transitions(drv, raw, upto):
+    """Driver values at this market's raw transitions up to `upto`: (to bear, to bull)."""
     s, d = raw.loc[:upto], drv.loc[:upto]
     ch = s.diff().fillna(0)
-    tb, tu = d[ch == 1].dropna(), d[ch == -1].dropna()
-    if len(tb) < MIN_TR or len(tu) < MIN_TR:
-        return None
-    U, L = float(tb.median()), float(tu.median())
-    return (U, L) if U > L else None
-
-
-def flip_labels(pub, horizon=HORIZON):
-    """1 if the PUBLISHED state changes within the next `horizon` rows, else 0. NaN where
-    the window runs past the end of the data, unless a flip already settles it."""
-    s = pub.values
-    n = len(s)
-    out = np.full(n, np.nan)
-    for i in range(n):
-        w = s[i + 1:min(i + horizon + 1, n)]
-        if len(w) == 0:
-            continue
-        if (w != s[i]).any():
-            out[i] = 1.0
-        elif i + horizon < n:
-            out[i] = 0.0
-        # else: inconclusive tail - leave NaN
-    return pd.Series(out, index=pub.index)
+    return d[ch == 1].dropna().values, d[ch == -1].dropna().values
 
 
 def _load(market, variant):
@@ -160,7 +120,6 @@ def _load(market, variant):
 
 
 def prepare(market, variant):
-    """need / gap / label for one market, plus what is needed to write it back."""
     got = _load(market, variant)
     if got is None:
         return None
@@ -169,101 +128,105 @@ def prepare(market, variant):
     raw = d["raw_state"].astype(int)
     n_bear, n_bull = gate_for(family, variant)
     need, req = countdown(pub, raw, n_bear, n_bull)
-    drv = (d["vm_alarm"] if family == "VM" else d["p_bear_raw"]).astype(float)
-
-    gap = pd.Series(np.nan, index=d.index)
     if family == "VM":
-        # the raw state IS drv >= VM_THRESH, so the distance to it is the mechanism
-        gap = np.where(pub == 0, drv - VM_THRESH, VM_THRESH - drv)
-        gap = pd.Series(gap, index=d.index)
+        col = "vm_alarm_u" if "vm_alarm_u" in d and d["vm_alarm_u"].notna().any() else "vm_alarm"
+        drv = d[col].astype(float)
     else:
-        # JM: per-market thresholds, refit each January on prior transitions only
-        for y in sorted({t.year for t in d.index}):
-            lv = jm_levels(drv, raw, pd.Timestamp(f"{y - 1}-12-31"))
+        drv = d["p_bear_raw"].astype(float)
+    return dict(market=market, family=family, path=path, d=d, pub=pub, raw=raw,
+                need=need, req=req, drv=drv)
+
+
+def distances(parts):
+    """Distance from the driver to the line that would turn the raw state, toward a flip.
+    VM: the line is 0.60 itself. JM: per-market levels refit each January (pooled JM
+    levels where a market has too few transitions of its own)."""
+    for p in parts:
+        p["dist"] = pd.Series(np.nan, index=p["d"].index)
+        if p["family"] == "VM":
+            p["dist"][:] = np.where(p["pub"] == 0, VM_THRESH - p["drv"], p["drv"] - VM_THRESH)
+    jm = [p for p in parts if p["family"] == "JM"]
+    years = sorted({y for p in jm for y in p["d"].index.year})
+    for y in years:
+        cut = pd.Timestamp(f"{y - 1}-12-31")
+        own, pool_b, pool_u = {}, [], []
+        for p in jm:
+            tb, tu = transitions(p["drv"], p["raw"], cut)
+            pool_b += list(tb)
+            pool_u += list(tu)
+            if len(tb) >= MIN_TR and len(tu) >= MIN_TR and np.median(tb) > np.median(tu):
+                own[p["market"]] = (float(np.median(tb)), float(np.median(tu)))
+        pooled = ((float(np.median(pool_b)), float(np.median(pool_u)))
+                  if len(pool_b) >= MIN_TR and len(pool_u) >= MIN_TR else None)
+        for p in jm:
+            lv = own.get(p["market"], pooled)
             if lv is None:
                 continue
             U, L = lv
-            sel = (d.index >= pd.Timestamp(f"{y}-01-01")) & (d.index <= pd.Timestamp(f"{y}-12-31"))
-            gap[sel] = np.where(pub[sel] == 0, drv[sel] - U, L - drv[sel])
-
-    return dict(market=market, family=family, path=path, d=d, pub=pub,
-                need=need, req=req, gap=gap, lab=flip_labels(pub))
-
-
-def fit_predict(parts):
-    """Pooled per (family, need) walk-forward isotonic. Returns {market: Series P(flip)}."""
-    years = sorted({y for p in parts for y in {t.year for t in p["d"].index}})
-    out = {p["market"]: pd.Series(np.nan, index=p["d"].index) for p in parts}
-    for y in years:
-        cut = pd.Timestamp(f"{y - 1}-12-31")
-        # ---- assemble the pooled training set, trimming the label's lookahead
-        tr = {}
-        for p in parts:
             idx = p["d"].index
-            usable = idx[idx <= cut]
-            if len(usable) > HORIZON:
-                usable = usable[:-HORIZON]
-            else:
-                continue
-            for k in (1, 2, 3):
-                m = (p["need"].loc[usable] == k) & p["gap"].loc[usable].notna() \
-                    & p["lab"].loc[usable].notna()
-                if not m.any():
-                    continue
-                key = (p["family"], k)
-                g, l = p["gap"].loc[usable][m], p["lab"].loc[usable][m]
-                tr.setdefault(key, [[], []])
-                tr[key][0] += list(g.values)
-                tr[key][1] += list(l.values)
-        # ---- fit one isotonic per (family, need); fall back to the cell mean
-        model, base = {}, {}
-        for key, (g, l) in tr.items():
-            g, l = np.asarray(g, float), np.asarray(l, float)
-            base[key] = float(l.mean())
-            if len(g) < MIN_FIT or l.sum() < MIN_POS or (1 - l).sum() < MIN_POS:
-                continue
-            ir = IsotonicRegression(y_min=0.0, y_max=1.0, increasing=True,
-                                    out_of_bounds="clip")
-            ir.fit(g, l)
-            model[key] = ir
-        # ---- predict this year
-        for p in parts:
+            sel = idx.year == y
+            drv, pub = p["drv"][sel], p["pub"][sel]
+            p["dist"][sel] = np.where(pub == 0, U - drv, drv - L)
+
+
+def closeness(parts):
+    """The 0-100% reading per market (as 0-1). D0 per family, walk-forward by year."""
+    out = {}
+    for fam in {p["family"] for p in parts}:
+        fp = [p for p in parts if p["family"] == fam]
+        years = sorted({y for p in fp for y in p["d"].index.year})
+        scale = {}
+        for y in years:
+            cut = pd.Timestamp(f"{y - 1}-12-31")
+            pool = np.concatenate([
+                p["dist"][(p["d"].index <= cut) & (p["need"] == p["req"]).values].dropna()
+                .clip(lower=0).values for p in fp])
+            if len(pool) >= MIN_SCALE_ROWS:
+                scale[y] = float(np.percentile(pool, SCALE_Q))
+        if not scale:
+            raise SystemExit(f"flip_calibrate: no {fam} scale could be fitted")
+        first = scale[min(scale)]
+        for y in years:                      # early years borrow the first fitted scale
+            scale.setdefault(y, first)
+        print(f"  {fam} scale D0 (distance that reads 0%): " + ", ".join(
+            f"{y}:{scale[y]:.2f}" for y in sorted(scale) if y >= max(scale) - 2), flush=True)
+        for p in fp:
             idx = p["d"].index
-            te = idx[(idx > cut) & (idx <= pd.Timestamp(f"{y}-12-31"))]
-            for t in te:
-                k = int(p["need"].loc[t])
-                key = (p["family"], k)
-                if k == 0:                       # gate already satisfied
-                    out[p["market"]].loc[t] = 1.0
-                    continue
-                gv = p["gap"].loc[t]
-                if key in model and not np.isnan(gv):
-                    out[p["market"]].loc[t] = float(model[key].predict([gv])[0])
-                elif key in base:
-                    out[p["market"]].loc[t] = base[key]
+            D0 = pd.Series([scale[y] for y in idx.year], index=idx)
+            need, req = p["need"], p["req"]
+            x = p["dist"].clip(lower=0) / D0
+            appr = LINE * (1 - x)
+            # NO HARD ZERO (user, 2026-10-17): 0% reads as "it only just flipped". Past
+            # TAIL_X the straight line bends into a decaying tail that meets it at the same
+            # value, so the far end still moves with the market and only approaches 0.
+            tail = LINE * (1 - TAIL_X) * np.exp(-(x - TAIL_X) / TAIL_K)
+            appr = appr.where(x <= TAIL_X, tail).clip(upper=APPROACH_CAP)
+            conf = LINE + (1 - LINE) * (req - need) / req
+            c = np.where(need == req, appr, np.where(need <= 0, 1.0, conf))
+            out[p["market"]] = pd.Series(c, index=idx)
     return out
 
 
 def run(markets, variant):
     parts = [q for q in (prepare(m, variant) for m in markets) if q]
     if not parts:
-        raise SystemExit("flip_calibrate: nothing to fit")
-    pf = fit_predict(parts)
+        raise SystemExit("flip_calibrate: nothing to compute")
+    distances(parts)
+    cl = closeness(parts)
     for p in parts:
         d, pub = p["d"], p["pub"]
-        P = pf[p["market"]]                     # P(flip AWAY from today's published state)
-        # dashboard convention: bull -> p_bear = P(to bear); bear -> p_bear = 1 - P(to bull)
-        d["p_bear"] = np.where(pub == 0, P, 1.0 - P)
-        d["flip_p"] = P
+        C = cl[p["market"]]                    # closeness to flipping AWAY from today's state
+        d["p_bear"] = np.where(pub == 0, C, 1.0 - C)
+        d["flip_p"] = C                        # kept name: now closeness, not a probability
         d["flip_need"] = p["need"]
         d["flip_req"] = p["req"]
-        d["flip_gap"] = p["gap"]
+        d["flip_gap"] = -p["dist"]             # old sign convention: >0 = past the line
         d.to_csv(p["path"])
         last = d.index[-1]
         print(f"  {p['market']:8} {p['family']}  need {int(p['need'].loc[last])}"
-              f"/{int(p['req'].loc[last])}  P(flip)="
-              f"{'--' if pd.isna(P.loc[last]) else format(P.loc[last], '.0%')}"
-              f"  covered {P.notna().mean():.0%} of rows", flush=True)
+              f"/{int(p['req'].loc[last])}  close to flip="
+              f"{'--' if pd.isna(C.loc[last]) else format(C.loc[last], '.0%')}"
+              f"  covered {C.notna().mean():.0%} of rows", flush=True)
 
 
 if __name__ == "__main__":
@@ -275,7 +238,7 @@ if __name__ == "__main__":
         else:
             args.append(a.upper())
     markets = args or [m for b in bb.BOARDS.values() for m in b]
-    print(f"FLIP CALIBRATE {variant} - horizon {HORIZON} sessions, "
-          f"pooled per model family ({len(markets)} markets)")
+    print(f"FLIP CLOSENESS {variant} - line at {LINE:.0%}, scale = p{SCALE_Q} of approach "
+          f"distance per model family ({len(markets)} markets)")
     run(markets, variant)
-    print("FLIP CALIBRATE COMPLETE")
+    print("FLIP CLOSENESS COMPLETE")

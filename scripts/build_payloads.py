@@ -338,8 +338,8 @@ def main(sym, variant="V6"):
                      if "p_bear" in df and len(df) > RECENT_N else None),
         # The confirmation COUNTDOWN behind the flip number (flip_calibrate.py). `flip_req`
         # consecutive raw days are needed to publish a flip - 2 for bear, 3 for bull - and
-        # `flip_need` are still outstanding. The tile states this beside the probability
-        # because it is exact where the probability is estimated, and because it is what
+        # `flip_need` are still outstanding. The tile states this beside the closeness
+        # reading because it is exact about tomorrow where closeness is not, and because it is what
         # visibly reverts when a setup breaks: "1 of 2 confirmed" dropping back to "0 of 2"
         # is the reader's signal that the move fell apart. It also carries the one fact a
         # bare percentage cannot - with 2+ outstanding, a flip tomorrow is impossible.

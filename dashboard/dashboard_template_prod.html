@@ -356,13 +356,13 @@ const tagOf = r => (BBM.has(r.variant) ? "BBM_" : "JM_") + (r.variant ?? "BL");
 // tile reading "Flip to Bull 100%". Same argument at the bottom, where 0% would claim a
 // flip is impossible. The clamp is display-only; p_bear is stored unclamped, so the
 // zone thresholds and the stored history are untouched.
-// WIDENED to 1-97% (2026-08-11) now that the number is P(flip within 5 sessions) fitted on
-// (countdown, distance-to-threshold) rather than a saturating 21-day level. The old 5% FLOOR
-// was itself a misreport: with 2+ confirmation days outstanding the measured rate is ~2%, and
-// rounding that up to 5% overstated the quiet end of the scale. The ceiling stays below 100%
-// only because an isotonic bin whose training days all flipped returns exactly 1.000, and
-// "n of n" is not certainty. Display-only; p_bear is stored unclamped.
-const FLIP_MIN = 0.01, FLIP_MAX = 0.97;
+// WIDENED to 1-97% (2026-08-11) for the 5-session probability, and OPENED to 0-100%
+// (2026-10-16) when the tile became CLOSE TO FLIP - a progress reading, not a forecast (see
+// flip_calibrate.py). 0-70% is the approach to the trigger line, 70-100% the confirmation
+// days, and 100% is the day the flip publishes.
+// FLOOR back to 1% (user, 2026-10-17): 0% reads as "it only just flipped". flip_calibrate's
+// tail already keeps the value above 0; this stops a 0.4% from ROUNDING to "0%".
+const FLIP_MIN = 0.01, FLIP_MAX = 1.0;
 const flipPct = (stateIsBull, pBear) =>
   pBear == null ? null
     : Math.min(FLIP_MAX, Math.max(FLIP_MIN, stateIsBull ? pBear : 1 - pBear));
@@ -370,12 +370,13 @@ function flipZone(currentState, pBear) {
   if (pBear == null) return null;
   const isBull = currentState === "bull";
   const pct = flipPct(isBull, pBear);
-  if (isBull) {  // displayed % = chance of flipping to bear: high = bad
+  // >70% means the trigger is crossed and confirmation days are being counted
+  if (isBull) {  // displayed % = how close to flipping to bear: high = bad
     return pct <= 0.4 ? { name: "GREEN", color: "var(--up)", pct }
       : pct <= 0.7 ? { name: "AMBER", color: "var(--amber)", pct }
       : { name: "RED", color: "var(--down)", pct };
   }
-  // displayed % = chance of flipping back to bull: high = good
+  // displayed % = how close to flipping back to bull: high = good
   return pct <= 0.4 ? { name: "RED", color: "var(--down)", pct }
     : pct <= 0.7 ? { name: "AMBER", color: "var(--amber)", pct }
     : { name: "GREEN", color: "var(--up)", pct };
@@ -392,10 +393,8 @@ function flipZone(currentState, pBear) {
 document.getElementById("sub").innerHTML =
   `Daily <b>bull / bear</b> market signal — fully invested in BULL, 3-month T-bills in BEAR.
   First dot: green = in the market, red = out. Second dot: flip-risk traffic light (green/amber/red).
-  The <b>Flip to</b> tile is the measured chance the signal turns <b>soon</b> — high reads as
-  imminent, low as weeks away — beside the exact count of confirmation days still outstanding.
-  A flip needs 2 consecutive model-bear days to publish bear, 3 to publish bull, so with 2 or
-  more still outstanding it <b>cannot</b> turn tomorrow however high the percentage.
+  The <b>Close to flip</b> tile shows how close the signal is to turning: it climbs as a flip
+  approaches and reaches 100% on the day it flips.
   How the signal is made: see the <b>Model</b> tab.`;
 
 // ---------- tabs ----------
@@ -567,28 +566,15 @@ function buildPanel(k, r) {
   // p_bear_1w = iloc[-6] / p_bear_2w = iloc[-11] convention).
   const flip1w = flipPct(r.state[Math.max(LAST - 5, 0)] === 0, sig.p_bear_1w);
   const flip2w = flipPct(r.state[Math.max(LAST - 10, 0)] === 0, sig.p_bear_2w);
-  // THE HORIZON IS DELIBERATELY OFF THE LABEL (user, 2026-08-11), reversing the 08-10 note
-  // that said it must stay. It only ever had to be there because the old number was a
-  // 21-day level that saturated - it read 100% two days out AND one day out, so the label
-  // was carrying meaning the number had lost. The number now encodes urgency by itself:
-  // median sessions-to-flip runs 132 / 55 / 34 / 19 / 14 / 8 / 2 / 1 down the scale, so a
-  // reader takes 93% as "tomorrow" and 20% as "weeks away" and is right both times. At the
-  // top of the range the 5-session figure IS a next-day figure - 89.6% next session against
-  // 93.8% within five. See flip_calibrate.py.
-  //
-  // The COUNTDOWN line carries what a horizon label never could: with 2+ confirmation days
-  // outstanding a flip tomorrow is not unlikely, it is impossible (0.000% over 123,400
-  // market-days). It is also the part that visibly reverts when a setup breaks - "1 of 2
-  // confirmed" falling back to "0 of 2" - which the percentage alone hides.
-  const fNeed = sig.flip_need, fReq = sig.flip_req;
-  const tgtWord = r.current_state === "bull" ? "bear" : "bull";
-  const cdown = (fNeed == null || fReq == null) ? ""
-    : fNeed <= 0 ? "confirmed &mdash; flip publishing"
-    : `${fReq - fNeed} of ${fReq} ${tgtWord} days confirmed`
-      + (fNeed >= 2 ? " &middot; cannot flip tomorrow" : " &middot; one more does it");
-  const flipTile = `<div class="tile"><div class="lbl">Flip to ${r.current_state === "bull" ? "Bear" : "Bull"}</div>
+  // CLOSE TO FLIP (user, 2026-10-16) replaced the 5-session probability, which read 1% or
+  // 4% on most markets because VM's clipped alarm gave them all the same input. The number
+  // is a distance along the road to a flip - 0-70 approach, 70-100 confirmation - and is
+  // deliberately not called a chance. The confirmation COUNTDOWN line that used to sit
+  // under it ("1 of 3 bull days confirmed") was REMOVED (user, 2026-10-17): readers should
+  // not have to know a gate exists, and the % alone gives the feel for how close a flip is.
+  // flip_need / flip_req still ship in the payload, unused here, if it is ever wanted back.
+  const flipTile = `<div class="tile"><div class="lbl">Close to flip &rarr; ${r.current_state === "bull" ? "Bear" : "Bull"}</div>
     <div class="val" ${zone ? `style="color:${zone.color}"` : ""}>${zone ? `${zone.name} · ${pctu(zone.pct, 0)}` : "–"}</div>
-    ${cdown ? `<div class="note">${cdown}</div>` : ""}
     <div class="note">1&thinsp;wk ago ${pctu(flip1w, 0)} · 2&thinsp;wk ago ${pctu(flip2w, 0)}</div></div>`;
 
   const t0 = sig.trade ?? {};
@@ -796,9 +782,10 @@ function buildPanel(k, r) {
   const flipRow = `<tr><td class="l" style="font-weight:650">Flip-risk signal — added</td>
         <td class="l">
         • Descriptive only — layered on top of the regime call, not part of the trading rule<br>
-        • The displayed % is always the chance of flipping <b>away from the shown signal</b><br>
-        • In <b>BULL</b> (flip-to-bear risk): <b style="color:var(--up)">GREEN</b> ≤40% · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--down)">RED</b> &gt;70%<br>
-        • In <b>BEAR</b> (flip-to-bull chance): <b style="color:var(--down)">RED</b> ≤40% (deep in bear) · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--up)">GREEN</b> &gt;70% (recovery near)<br>
+        • The displayed % is how close the market is to flipping <b>away from the shown signal</b> — a distance, not a chance<br>
+        • It climbs as a flip approaches and reaches 100% on the day the signal flips<br>
+        • In <b>BULL</b> (closeness to bear): <b style="color:var(--up)">GREEN</b> ≤40% · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--down)">RED</b> &gt;70%<br>
+        • In <b>BEAR</b> (closeness to bull): <b style="color:var(--down)">RED</b> ≤40% (deep in bear) · <b style="color:var(--amber)">AMBER</b> 40–70% · <b style="color:var(--up)">GREEN</b> &gt;70% (recovery near)<br>
         • Shown as each tab's second dot and in the Signal tile</td></tr>`;
   // How a published signal is produced. Every condition, both directions.
   const hasVeto  = ["V5","V6","V7","V9","V10"].includes(SUFFIX);
