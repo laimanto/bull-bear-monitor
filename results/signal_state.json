@@ -1,215 +1,215 @@
 {
  "variant": "V17",
- "data_through": "2026-11-18",
+ "data_through": "2026-11-19",
  "markets": {
   "AAPL": {
    "state": "BULL",
    "zone": "GREEN",
    "pct": 0.2223648884707602,
-   "end": "2026-11-17",
+   "end": "2026-11-18",
    "strength": "Weak"
   },
   "AMZN": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.4323921176167498,
-   "end": "2026-11-17",
+   "pct": 0.437393623882477,
+   "end": "2026-11-18",
    "strength": "Poor"
   },
   "ARKQ": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.06651593612648243,
-   "end": "2026-11-17",
+   "pct": 0.06543647072232384,
+   "end": "2026-11-18",
    "strength": "Strong"
   },
   "BTC": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.5390726718569874,
-   "end": "2026-11-17",
+   "pct": 0.5148398185226619,
+   "end": "2026-11-18",
    "strength": "Fair"
   },
   "ETH": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.28557214638933326,
-   "end": "2026-11-17",
+   "pct": 0.29405163817251423,
+   "end": "2026-11-18",
    "strength": "Poor"
   },
   "EWS": {
    "state": "BULL",
    "zone": "AMBER",
    "pct": 0.69,
-   "end": "2026-11-17",
+   "end": "2026-11-18",
    "strength": "Good"
   },
   "FTSE": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.5177659319943015,
-   "end": "2026-11-17",
+   "pct": 0.5589949295007438,
+   "end": "2026-11-18",
    "strength": "Fair"
   },
   "GOLD": {
    "state": "BULL",
    "zone": "AMBER",
    "pct": 0.69,
-   "end": "2026-11-16",
+   "end": "2026-11-17",
    "strength": "Poor"
   },
   "GOOGL": {
    "state": "BULL",
    "zone": "AMBER",
    "pct": 0.6822322855160935,
-   "end": "2026-11-17",
+   "end": "2026-11-18",
    "strength": "Weak"
   },
   "HK0005": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.5906354054185604,
-   "end": "2026-11-18",
+   "pct": 0.69,
+   "end": "2026-11-19",
    "strength": "Fair"
   },
   "HK0388": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.6046990779796989,
-   "end": "2026-11-18",
+   "pct": 0.6105464771337801,
+   "end": "2026-11-19",
    "strength": "Weak"
   },
   "HK0700": {
    "state": "BEAR",
-   "zone": "AMBER",
-   "pct": 0.40694665216809667,
-   "end": "2026-11-18",
+   "zone": "RED",
+   "pct": 0.3976354315475302,
+   "end": "2026-11-19",
    "strength": "Fair"
   },
   "HK0939": {
    "state": "BULL",
    "zone": "GREEN",
-   "pct": 0.1522122792185157,
-   "end": "2026-11-18",
+   "pct": 0.1808905418924821,
+   "end": "2026-11-19",
    "strength": "Fair"
   },
   "HK0941": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.4177728682874276,
-   "end": "2026-11-18",
+   "pct": 0.4171155107251214,
+   "end": "2026-11-19",
    "strength": "Weak"
   },
   "HK1800": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.05333619712127402,
-   "end": "2026-11-18",
+   "pct": 0.05344940059988179,
+   "end": "2026-11-19",
    "strength": "Fair"
   },
   "HK1810": {
    "state": "BEAR",
-   "zone": "GREEN",
-   "pct": 0.9000000000000001,
-   "end": "2026-11-18",
+   "zone": "RED",
+   "pct": 0.33086744840249127,
+   "end": "2026-11-19",
    "strength": "Poor"
   },
   "HK9988": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.1972727930760798,
-   "end": "2026-11-18",
+   "pct": 0.18536375031777907,
+   "end": "2026-11-19",
    "strength": "Fair"
   },
   "HSI": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.6159485780695348,
-   "end": "2026-11-18",
+   "pct": 0.6229315924755994,
+   "end": "2026-11-19",
    "strength": "Good"
   },
   "KOSPI": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.2178318548695919,
-   "end": "2026-11-18",
+   "pct": 0.3340535183208595,
+   "end": "2026-11-19",
    "strength": "Good"
   },
   "META": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.10105903164101382,
-   "end": "2026-11-17",
+   "pct": 0.08800074288123283,
+   "end": "2026-11-18",
    "strength": "Strong"
   },
   "MSFT": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.5658127313245371,
-   "end": "2026-11-17",
+   "pct": 0.6201249101326922,
+   "end": "2026-11-18",
    "strength": "Strong"
   },
   "MU": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.04140086843950741,
-   "end": "2026-11-17",
+   "pct": 0.04337777133415721,
+   "end": "2026-11-18",
    "strength": "Fair"
   },
   "NDX": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.6888545942308085,
-   "end": "2026-11-17",
+   "pct": 0.6369540038657407,
+   "end": "2026-11-18",
    "strength": "Strong"
   },
   "NIKKEI": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.11286964318017179,
-   "end": "2026-11-18",
+   "pct": 0.09560156355119842,
+   "end": "2026-11-19",
    "strength": "Weak"
   },
   "NVDA": {
    "state": "BEAR",
    "zone": "AMBER",
-   "pct": 0.590525908063849,
-   "end": "2026-11-17",
+   "pct": 0.5897818389155352,
+   "end": "2026-11-18",
    "strength": "Fair"
   },
   "SILVER": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.11892984847235633,
-   "end": "2026-11-17",
+   "pct": 0.09177952061367245,
+   "end": "2026-11-18",
    "strength": "Poor"
   },
   "SMH": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.049525441289117955,
-   "end": "2026-11-17",
+   "pct": 0.04573839545970482,
+   "end": "2026-11-18",
    "strength": "Weak"
   },
   "SPX": {
    "state": "BULL",
    "zone": "AMBER",
-   "pct": 0.625031621958875,
-   "end": "2026-11-17",
+   "pct": 0.6338174324220477,
+   "end": "2026-11-18",
    "strength": "Good"
   },
   "TSLA": {
    "state": "BEAR",
    "zone": "RED",
-   "pct": 0.18366057113262002,
-   "end": "2026-11-17",
+   "pct": 0.18330150686824853,
+   "end": "2026-11-18",
    "strength": "Weak"
   },
   "WTI": {
    "state": "BULL",
    "zone": "GREEN",
-   "pct": 0.2885980522816028,
-   "end": "2026-11-17",
+   "pct": 0.3732207563097638,
+   "end": "2026-11-18",
    "strength": "Strong"
   }
  }
